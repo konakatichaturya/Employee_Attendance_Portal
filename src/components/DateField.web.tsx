@@ -43,6 +43,10 @@ export function DateField({
   const styles = useMemo(() => createStyles(theme), [theme]);
 
   // Stays light regardless of dark/light mode — see InputField.tsx for why.
+  // colorScheme: 'light' matters here specifically: without it, mobile browsers
+  // render this native <input type="date">'s value text using the OS/browser dark
+  // palette when dark mode is active, making it invisible against this field's
+  // always-light background (a normal CSS `color` override doesn't reach it).
   const inputStyle: React.CSSProperties = {
     width: '100%',
     boxSizing: 'border-box',
@@ -50,6 +54,7 @@ export function DateField({
     borderRadius: theme.radius.md,
     backgroundColor: lightColors.surface,
     color: value ? lightColors.textPrimary : lightColors.textMuted,
+    colorScheme: 'light',
     padding: '12px 10px',
     fontSize: 14,
     fontFamily: 'inherit',
