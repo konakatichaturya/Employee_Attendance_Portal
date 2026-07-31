@@ -1,20 +1,77 @@
+import React, { useEffect, useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
-import { StyleSheet, Text, View } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Provider } from 'react-redux';
+import { PaperProvider } from 'react-native-paper';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import Toast from 'react-native-toast-message';
+import { store } from './src/store/store';
+import { useAppDispatch, useAppSelector } from './src/store/hooks';
+import { bootstrapAuth, forceUnauthenticated } from './src/store/slices/authSlice';
+import { registerUnauthorizedHandler } from './src/services/api/client';
+import { initDb } from './src/services/storage/db';
+import { RootNavigator } from './src/navigation/RootNavigator';
+import { useAttendanceOfflineSync } from './src/hooks/useAttendanceOfflineSync';
+import { useLeaveDecisionNotifications } from './src/hooks/useLeaveDecisionNotifications';
+import { Loader } from './src/components/Loader';
+import { NativeThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { toastConfig } from './src/components/toastConfig';
 
-export default function App() {
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: { retry: 1, staleTime: 30_000 },
+  },
+});
+
+function AppBootstrap() {
+  const dispatch = useAppDispatch();
+  const status = useAppSelector((s) => s.auth.status);
+  const [dbReady, setDbReady] = useState(false);
+
+  useAttendanceOfflineSync();
+  useLeaveDecisionNotifications();
+
+  useEffect(() => {
+    registerUnauthorizedHandler(() => dispatch(forceUnauthenticated()));
+
+    (async () => {
+      await initDb();
+      setDbReady(true);
+      dispatch(bootstrapAuth());
+    })();
+  }, [dispatch]);
+
+  if (!dbReady || status === 'idle') {
+    return <Loader fullScreen label="Loading WorkTrack..." />;
+  }
+
+  return <RootNavigator />;
+}
+
+function ThemedApp() {
+  const { mode, paperTheme } = useTheme();
   return (
-    <View style={styles.container}>
-      <Text>Open up App.tsx to start working on your app!</Text>
-      <StatusBar style="auto" />
-    </View>
+    <PaperProvider theme={paperTheme}>
+      <StatusBar style={mode === 'dark' ? 'light' : 'dark'} />
+      <AppBootstrap />
+      <Toast config={toastConfig} />
+    </PaperProvider>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
+export default function App() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <Provider store={store}>
+          <QueryClientProvider client={queryClient}>
+            <NativeThemeProvider>
+              <ThemedApp />
+            </NativeThemeProvider>
+          </QueryClientProvider>
+        </Provider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
+  );
+}
