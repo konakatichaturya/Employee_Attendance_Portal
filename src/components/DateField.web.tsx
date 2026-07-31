@@ -26,6 +26,36 @@ function parseInputValue(value: string): Date | null {
   return new Date(year, month - 1, day);
 }
 
+const DATE_INPUT_CLASS = 'wt-date-field-input';
+let dateInputStyleInjected = false;
+
+// colorScheme: 'light' isn't consistently honored by every mobile browser's
+// internal <input type="date"> rendering, so the value text can still come out
+// too light to read. This forces it via the WebKit-specific pseudo-elements that
+// actually paint that text (color-scheme has no effect on these).
+function ensureDateInputStyleInjected() {
+  if (dateInputStyleInjected || typeof document === 'undefined') return;
+  dateInputStyleInjected = true;
+  const style = document.createElement('style');
+  style.textContent = `
+    .${DATE_INPUT_CLASS}::-webkit-datetime-edit,
+    .${DATE_INPUT_CLASS}::-webkit-datetime-edit-fields-wrapper,
+    .${DATE_INPUT_CLASS}::-webkit-datetime-edit-text,
+    .${DATE_INPUT_CLASS}::-webkit-datetime-edit-month-field,
+    .${DATE_INPUT_CLASS}::-webkit-datetime-edit-day-field,
+    .${DATE_INPUT_CLASS}::-webkit-datetime-edit-year-field {
+      color: ${lightColors.textPrimary} !important;
+      -webkit-text-fill-color: ${lightColors.textPrimary} !important;
+      opacity: 1 !important;
+    }
+    .${DATE_INPUT_CLASS}::-webkit-calendar-picker-indicator {
+      filter: none;
+      opacity: 0.6;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 // react-native-community/datetimepicker has no web implementation, so the native
 // DateField (DateField.tsx) doesn't render a usable picker in the browser. This
 // .web.tsx sibling is automatically picked up by the bundler for web builds and
@@ -41,6 +71,7 @@ export function DateField({
 }: DateFieldProps) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
+  ensureDateInputStyleInjected();
 
   // Stays light regardless of dark/light mode — see InputField.tsx for why.
   // colorScheme: 'light' matters here specifically: without it, mobile browsers
@@ -72,6 +103,7 @@ export function DateField({
         max: toInputValue(maximumDate),
         placeholder,
         'aria-label': label,
+        className: DATE_INPUT_CLASS,
         style: inputStyle,
         onChange: (e: React.ChangeEvent<HTMLInputElement>) => {
           const parsed = parseInputValue(e.target.value);
