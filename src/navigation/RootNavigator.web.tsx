@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { AuthNavigator } from './AuthNavigator';
@@ -13,7 +13,9 @@ import { WebThemeProvider } from '../admin/ThemeContext';
 import { WebAppFrame } from '../components/WebAppFrame';
 import { ChangePasswordScreen } from '../features/auth/ChangePasswordScreen';
 import { LandingPage } from '../marketing/LandingPage';
+import { NativeLandingPage } from '../marketing/NativeLandingPage';
 import type { UserRole } from '../types';
+import type { AuthStackParamList } from './types';
 
 // Below this viewport width, the desktop sidebar/panel web UI (built with fixed
 // desktop-only widths) doesn't fit and breaks. A phone browser at the same public
@@ -32,11 +34,20 @@ export function RootNavigator() {
   const { width } = useWindowDimensions();
   const isMobileWeb = width < MOBILE_WEB_BREAKPOINT;
 
-  // Desktop web only: the marketing landing page is the front door for signed-out
+  // Desktop web: the marketing landing page is the front door for signed-out
   // visitors; picking Log In / Get Started there hands off into the existing
-  // AdminAuthPage with the right persona/mode preset. Mobile-web skips straight
-  // to AdminAuthPage/AuthNavigator as before — no landing page there.
+  // AdminAuthPage with the right persona/mode preset.
   const [authEntry, setAuthEntry] = useState<{ persona: UserRole; mode: 'login' | 'register' } | null>(null);
+
+  // Mobile-web gets the same phone-optimized landing page as the native app
+  // (NativeLandingPage) instead of the desktop one — it's the same front
+  // door, just not skipped anymore now that a phone-width version exists.
+  const [showMobileLanding, setShowMobileLanding] = useState(true);
+  const [authInitialRoute, setAuthInitialRoute] = useState<keyof AuthStackParamList>('Login');
+
+  useEffect(() => {
+    if (status === 'unauthenticated') setShowMobileLanding(true);
+  }, [status]);
 
   if (status === 'idle' || status === 'checking') {
     return <Loader fullScreen label="Loading WorkTrack..." />;
@@ -74,6 +85,23 @@ export function RootNavigator() {
     );
   }
 
+  if (status === 'unauthenticated' && showMobileLanding) {
+    return (
+      <WebAppFrame>
+        <NativeLandingPage
+          onLogin={() => {
+            setAuthInitialRoute('Login');
+            setShowMobileLanding(false);
+          }}
+          onGetStarted={() => {
+            setAuthInitialRoute('Register');
+            setShowMobileLanding(false);
+          }}
+        />
+      </WebAppFrame>
+    );
+  }
+
   return (
     <WebAppFrame>
       <NavigationContainer>
@@ -84,7 +112,7 @@ export function RootNavigator() {
             <MainTabNavigator />
           )
         ) : (
-          <AuthNavigator />
+          <AuthNavigator initialRouteName={authInitialRoute} />
         )}
       </NavigationContainer>
     </WebAppFrame>
