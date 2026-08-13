@@ -1,10 +1,47 @@
 import React, { useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { BlurView } from 'expo-blur';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import type { SharedTheme } from '../theme';
 import { vivid } from '../marketing/vividPalette';
+
+const webVideoStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+};
+
+function WebVideo({ src }: { src: string }) {
+  return React.createElement('video', {
+    src,
+    autoPlay: true,
+    muted: true,
+    loop: true,
+    playsInline: true,
+    style: webVideoStyle,
+  });
+}
+
+function NativeVideo({ src }: { src: string }) {
+  const player = useVideoPlayer(src, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
+  return <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />;
+}
+
+// expo-video's VideoView is unreliable for autoplay in mobile Safari (shows
+// a blank/dark frame and never starts) — the plain <video> element with
+// playsInline is the combination browsers actually honor for autoplay,
+// same recipe already proven on the desktop marketing pages.
+export function VideoBackground({ src }: { src: string }) {
+  return Platform.OS === 'web' ? <WebVideo src={src} /> : <NativeVideo src={src} />;
+}
 
 interface VideoHeroProps {
   theme: SharedTheme;
@@ -21,15 +58,10 @@ interface VideoHeroProps {
 // language.
 export function VideoHero({ theme, title, subtitle, videoSrc, height = 150, right }: VideoHeroProps) {
   const styles = useMemo(() => createStyles(theme, height), [theme, height]);
-  const player = useVideoPlayer(videoSrc, (p) => {
-    p.loop = true;
-    p.muted = true;
-    p.play();
-  });
 
   return (
     <View style={styles.wrapper}>
-      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+      <VideoBackground src={videoSrc} />
 
       <View style={styles.scrim} />
       <Svg style={StyleSheet.absoluteFill as any} width="100%" height="100%">

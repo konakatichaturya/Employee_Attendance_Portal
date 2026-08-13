@@ -1,10 +1,10 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Image, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useVideoPlayer, VideoView } from 'expo-video';
 import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { Logo } from '../components/Logo';
 import { AppButton } from '../components/AppButton';
+import { VideoBackground } from '../components/VideoHero';
 import { useTheme, type Theme } from '../theme/ThemeContext';
 import { vivid, VIVID_FEATURE_COLORS } from './vividPalette';
 import { ANNOUNCEMENT, FEATURES, HERO_SLIDES, SOCIAL_ICONS, type HeroVariant } from './content';
@@ -115,13 +115,9 @@ export function NativeLandingPage({ onLogin, onGetStarted }: NativeLandingPagePr
           <Rect x={0} y={0} width="100%" height="100%" fill="url(#ctaGrad)" />
         </Svg>
         <Text style={styles.ctaTitle}>Ready to simplify attendance & leave?</Text>
-        <AppButton
-          label="Get Started"
-          onPress={onGetStarted}
-          size="lg"
-          fullWidth={false}
-          style={{ backgroundColor: '#FFFFFF', marginTop: 14, alignSelf: 'flex-start' }}
-        />
+        <Pressable onPress={onGetStarted} style={styles.ctaButton} accessibilityRole="button">
+          <Text style={styles.ctaButtonText}>Get Started</Text>
+        </Pressable>
       </View>
 
       <View style={styles.sectionSpacer} />
@@ -146,15 +142,10 @@ export function NativeLandingPage({ onLogin, onGetStarted }: NativeLandingPagePr
 function HeroSlideCard({ variant }: { variant: HeroVariant }) {
   const { theme } = useTheme();
   const styles = useMemo(() => createStyles(theme), [theme]);
-  const player = useVideoPlayer(NATIVE_VIDEO[variant], (p) => {
-    p.loop = true;
-    p.muted = true;
-    p.play();
-  });
 
   return (
     <View style={styles.heroCard}>
-      <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+      <VideoBackground src={NATIVE_VIDEO[variant]} />
       <View style={styles.heroScrim} />
     </View>
   );
@@ -314,6 +305,21 @@ function createStyles(theme: Theme) {
     ctaTitle: {
       ...theme.typography.h3,
       color: '#FFFFFF',
+    },
+    ctaButton: {
+      marginTop: 14,
+      alignSelf: 'flex-start',
+      backgroundColor: '#FFFFFF',
+      paddingVertical: 14,
+      paddingHorizontal: theme.spacing.lg,
+      borderRadius: theme.radius.pill,
+      ...theme.elevation.md,
+    },
+    ctaButtonText: {
+      ...theme.typography.bodyMedium,
+      fontSize: 16,
+      fontWeight: '700',
+      color: vivid.blue,
     },
     footer: {
       alignItems: 'center',
