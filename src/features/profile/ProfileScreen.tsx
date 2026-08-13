@@ -6,16 +6,20 @@ import { z } from 'zod';
 import * as ImagePicker from 'expo-image-picker';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Screen } from '../../components/Screen';
-import { Card } from '../../components/Card';
+import { GlassCard } from '../../components/GlassCard';
 import { InputField } from '../../components/InputField';
 import { AppButton } from '../../components/AppButton';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { VideoHero } from '../../components/VideoHero';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { useTheme, type Theme } from '../../theme/ThemeContext';
 import { useAppSelector } from '../../store/hooks';
 import { useUpdateProfile } from '../../hooks/useProfile';
+import { useManagers } from '../../admin/hooks/useAdminData';
 import { phoneSchema } from './schema';
 import { ImageSourceSheet } from './components/ImageSourceSheet';
 import { showErrorToast, showSuccessToast } from '../../components/toast';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
 
 const profileFormSchema = z.object({ phone: phoneSchema });
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -25,6 +29,8 @@ export function ProfileScreen() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const employee = useAppSelector((s) => s.auth.employee);
   const updateProfileMutation = useUpdateProfile();
+  const managersQuery = useManagers();
+  const managerName = managersQuery.data?.find((m) => m.id === employee?.reportsToId)?.name;
 
   const [sheetVisible, setSheetVisible] = useState(false);
   const [confirmVisible, setConfirmVisible] = useState(false);
@@ -94,8 +100,10 @@ export function ProfileScreen() {
 
   return (
     <Screen>
+      <GradientBlobBackdrop />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>My Profile</Text>
+        <VideoHero theme={theme} title="My Profile" subtitle="Manage your account details" videoSrc={NATIVE_VIDEO.calendar} height={110} />
+        <View style={styles.heroSpacer} />
 
         <View style={styles.avatarSection}>
           <View style={styles.avatarWrapper} onTouchEnd={() => setSheetVisible(true)}>
@@ -124,14 +132,15 @@ export function ProfileScreen() {
           </View>
         </View>
 
-        <Card style={styles.card}>
+        <GlassCard style={styles.card}>
           <Text style={styles.sectionLabel}>Account Details</Text>
           <ReadOnlyRow label="Full Name" value={employee?.name ?? ''} />
           <ReadOnlyRow label="Email" value={employee?.email ?? ''} />
-          <ReadOnlyRow label="Department" value={employee?.department ?? ''} last />
-        </Card>
+          <ReadOnlyRow label="Department" value={employee?.department ?? ''} last={!managerName} />
+          {!!managerName && <ReadOnlyRow label="Reports To" value={managerName} last />}
+        </GlassCard>
 
-        <Card style={styles.card}>
+        <GlassCard style={styles.card}>
           <Text style={styles.sectionLabel}>Contact Information</Text>
           <Controller
             control={control}
@@ -154,7 +163,7 @@ export function ProfileScreen() {
             disabled={!isDirty}
             loading={updateProfileMutation.isPending && !pendingAvatarUri}
           />
-        </Card>
+        </GlassCard>
       </ScrollView>
 
       <ImageSourceSheet
@@ -193,6 +202,9 @@ function createStyles(theme: Theme) {
     content: {
       padding: theme.spacing.md,
       paddingBottom: theme.spacing.xxl,
+    },
+    heroSpacer: {
+      height: theme.spacing.md,
     },
     heading: {
       ...theme.typography.h2,

@@ -3,7 +3,7 @@ import { RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Screen } from '../../components/Screen';
-import { Card } from '../../components/Card';
+import { GlassCard } from '../../components/GlassCard';
 import { Loader } from '../../components/Loader';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { SuccessOverlay } from '../../components/SuccessOverlay';
@@ -19,8 +19,11 @@ import { LeaveBalanceSummary } from './components/LeaveBalanceSummary';
 import { QuickActionGrid } from './components/QuickActionGrid';
 import { GreetingHeader } from './components/GreetingHeader';
 import { StatTileRow } from '../../components/StatTileRow';
+import { VideoHero } from '../../components/VideoHero';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { showErrorToast } from '../../components/toast';
 import { LocationPermissionDeniedError } from '../../services/location/locationService';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
 import type { DashboardStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
@@ -115,6 +118,7 @@ export function DashboardScreen() {
 
   return (
     <Screen edges={['top', 'left', 'right']}>
+      <GradientBlobBackdrop />
       {isOffline && <OfflineBanner />}
       <ScrollView
         contentContainerStyle={styles.content}
@@ -127,6 +131,15 @@ export function DashboardScreen() {
           onAvatarPress={() => parentNavigation?.navigate('ProfileTab')}
           onLogout={() => setLogoutModalVisible(true)}
         />
+
+        <VideoHero
+          theme={theme}
+          title={`Hi, ${employee?.name?.split(' ')[0] ?? 'there'}`}
+          subtitle={greetingSubtitle}
+          videoSrc={NATIVE_VIDEO.attendance}
+          height={140}
+        />
+        <View style={styles.spacer} />
 
         <AttendanceStatusCard
           record={todayQuery.data}
@@ -176,7 +189,7 @@ export function DashboardScreen() {
 
         <View style={styles.spacer} />
 
-        <Card padded={false} style={styles.actionsCard}>
+        <GlassCard padded={false} style={styles.actionsCard}>
           <Text style={styles.sectionHeading}>Quick Actions</Text>
           <QuickActionGrid
             actions={[
@@ -217,7 +230,7 @@ export function DashboardScreen() {
               },
             ]}
           />
-        </Card>
+        </GlassCard>
       </ScrollView>
 
       <SuccessOverlay

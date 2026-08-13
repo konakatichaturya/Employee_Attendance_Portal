@@ -13,12 +13,21 @@ export interface Employee {
   reportsToId?: string;
   /** True for Admin-created accounts until the holder sets their own password. */
   mustChangePassword?: boolean;
+  /** Base monthly salary used for payslip generation, in the app's local currency. */
+  monthlySalary: number;
 }
 
 export interface AuthState {
   employee: Employee | null;
   token: string | null;
   status: 'idle' | 'checking' | 'authenticated' | 'unauthenticated';
+  /**
+   * Set once credentials pass and a one-time code has been issued, cleared
+   * once that code is verified (or the attempt is cancelled). `devCode` is
+   * the code itself — this app has no real email/SMS provider connected, so
+   * the code is surfaced directly in the UI instead of actually being sent.
+   */
+  pendingOtp: { email: string; role: UserRole; devCode: string } | null;
 }
 
 export type AttendanceStatus = 'checked-in' | 'checked-out' | 'absent';
@@ -77,3 +86,13 @@ export interface LeaveBalance {
 }
 
 export type HistoryFilter = '7d' | '30d' | 'custom';
+
+export type CalendarEventType = 'holiday' | 'meeting';
+
+export interface CalendarEvent {
+  id: string;
+  title: string;
+  type: CalendarEventType;
+  date: string; // yyyy-MM-dd
+  description?: string;
+}

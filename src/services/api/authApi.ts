@@ -2,12 +2,15 @@ import { mockServer } from '../mock/mockServer';
 import type { Employee } from '../../types';
 
 export const authApi = {
-  login(
+  requestLoginOtp(
     email: string,
     password: string,
     expectedRole?: Employee['role'],
-  ): Promise<{ token: string; employee: Employee }> {
-    return mockServer.login(email, password, expectedRole);
+  ): Promise<{ email: string; role: Employee['role']; devCode: string }> {
+    return mockServer.requestLoginOtp(email, password, expectedRole);
+  },
+  verifyLoginOtp(email: string, code: string): Promise<{ token: string; employee: Employee }> {
+    return mockServer.verifyLoginOtp(email, code);
   },
   register(input: {
     employeeId: string;

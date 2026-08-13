@@ -2,9 +2,12 @@ import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { format } from 'date-fns';
 import { Screen } from '../../components/Screen';
-import { Card } from '../../components/Card';
+import { GlassCard } from '../../components/GlassCard';
 import { Loader } from '../../components/Loader';
+import { VideoHero } from '../../components/VideoHero';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { useTheme, type Theme } from '../../theme/ThemeContext';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
 import { DonutChart } from './components/DonutChart';
 import { KpiTileRow } from './components/KpiTileRow';
 import { TrendLineChart } from './components/TrendLineChart';
@@ -46,11 +49,16 @@ export function AdminOverviewScreen() {
 
   return (
     <Screen edges={['top', 'left', 'right']}>
+      <GradientBlobBackdrop />
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.headerRow}>
-          <Text style={styles.heading}>Attendance Dashboard</Text>
-          <Text style={styles.subheading}>{format(new Date(), 'EEEE, dd MMMM yyyy')}</Text>
-        </View>
+        <VideoHero
+          theme={theme}
+          title="Attendance Dashboard"
+          subtitle={format(new Date(), 'EEEE, dd MMMM yyyy')}
+          videoSrc={NATIVE_VIDEO.attendance}
+          height={120}
+        />
+        <View style={styles.heroSpacer} />
 
         <AttendanceInsightsCard
           presentRate={stats.presentRate}
@@ -81,7 +89,7 @@ export function AdminOverviewScreen() {
 
         <View style={styles.spacer} />
 
-        <Card style={styles.chartCard}>
+        <GlassCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>Attendance Status Overview</Text>
           <View style={styles.donutBody}>
             <DonutChart
@@ -113,39 +121,39 @@ export function AdminOverviewScreen() {
               ))}
             </View>
           </View>
-        </Card>
+        </GlassCard>
 
         <View style={styles.spacer} />
 
-        <Card style={styles.chartCard}>
+        <GlassCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>Daily Attendance Trend</Text>
           {trendQuery.data ? (
             <TrendLineChart data={trendQuery.data} totalEmployees={stats.totalEmployees} />
           ) : (
             <Loader label="Loading trend..." />
           )}
-        </Card>
+        </GlassCard>
 
         <View style={styles.spacer} />
 
-        <Card style={styles.chartCard}>
+        <GlassCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>Attendance by Department</Text>
           {deptQuery.data ? <DepartmentBarChart data={deptQuery.data} /> : <Loader label="Loading..." />}
-        </Card>
+        </GlassCard>
 
         <View style={styles.spacer} />
 
-        <Card style={styles.chartCard}>
+        <GlassCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>Top 5 Employees by Work Hours</Text>
           {topQuery.data ? <TopEmployeesTable data={topQuery.data} /> : <Loader label="Loading..." />}
-        </Card>
+        </GlassCard>
 
         <View style={styles.spacer} />
 
-        <Card style={styles.chartCard}>
+        <GlassCard style={styles.chartCard}>
           <Text style={styles.cardTitle}>Attendance Heatmap (last 14 days)</Text>
           {heatmapQuery.data ? <AttendanceHeatmap data={heatmapQuery.data} /> : <Loader label="Loading heatmap..." />}
-        </Card>
+        </GlassCard>
       </ScrollView>
     </Screen>
   );
@@ -157,17 +165,8 @@ function createStyles(theme: Theme) {
       padding: theme.spacing.md,
       paddingBottom: theme.spacing.xxl,
     },
-    headerRow: {
-      marginBottom: theme.spacing.md,
-    },
-    heading: {
-      ...theme.typography.h2,
-      color: theme.colors.textPrimary,
-    },
-    subheading: {
-      ...theme.typography.body,
-      color: theme.colors.textSecondary,
-      marginTop: 2,
+    heroSpacer: {
+      height: theme.spacing.md,
     },
     spacer: {
       height: theme.spacing.md,

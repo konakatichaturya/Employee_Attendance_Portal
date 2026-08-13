@@ -2,13 +2,16 @@ import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Screen } from '../../components/Screen';
-import { Card } from '../../components/Card';
+import { GlassCard } from '../../components/GlassCard';
 import { AppButton } from '../../components/AppButton';
 import { Loader } from '../../components/Loader';
 import { EmptyState } from '../../components/EmptyState';
+import { VideoHero } from '../../components/VideoHero';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { useTheme, type Theme } from '../../theme/ThemeContext';
 import { useDecideAsManager, usePendingApprovalsForManager } from '../../admin/hooks/useApprovals';
 import { showErrorToast, showSuccessToast } from '../../components/toast';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
 import type { LeaveRequest } from '../../types';
 
 export function ApprovalsScreen() {
@@ -33,9 +36,16 @@ export function ApprovalsScreen() {
 
   return (
     <Screen edges={['top', 'left', 'right']}>
+      <GradientBlobBackdrop />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>Approvals</Text>
-        <Text style={styles.subheading}>Leave requests from your direct reports.</Text>
+        <VideoHero
+          theme={theme}
+          title="Approvals"
+          subtitle="Leave requests from your direct reports"
+          videoSrc={NATIVE_VIDEO.leave}
+          height={120}
+        />
+        <View style={styles.heroSpacer} />
 
         {isLoading ? (
           <Loader label="Loading approvals..." />
@@ -47,7 +57,7 @@ export function ApprovalsScreen() {
           />
         ) : (
           approvals.map((item) => (
-            <Card key={item.id} style={styles.card}>
+            <GlassCard key={item.id} style={styles.card}>
               <View style={styles.headerRow}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.name}>{item.employeeName}</Text>
@@ -77,7 +87,7 @@ export function ApprovalsScreen() {
                   onPress={() => decide(item.id, item.employeeId, 'reject')}
                 />
               </View>
-            </Card>
+            </GlassCard>
           ))
         )}
       </ScrollView>
@@ -91,15 +101,8 @@ function createStyles(theme: Theme) {
       padding: theme.spacing.md,
       paddingBottom: theme.spacing.xxl,
     },
-    heading: {
-      ...theme.typography.h2,
-      color: theme.colors.textPrimary,
-    },
-    subheading: {
-      ...theme.typography.body,
-      color: theme.colors.textSecondary,
-      marginTop: 2,
-      marginBottom: theme.spacing.md,
+    heroSpacer: {
+      height: theme.spacing.md,
     },
     card: {
       marginBottom: theme.spacing.sm,

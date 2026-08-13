@@ -1,13 +1,24 @@
 import { format, subDays } from 'date-fns';
 import { localStore } from '../storage/localStore';
 import { upsertAttendanceRecords } from '../storage/db';
-import type { AttendanceRecord, Employee, GeoPoint, LeaveBalance, LeaveRequest, LeaveStatus, LeaveType } from '../../types';
+import type {
+  AttendanceRecord,
+  CalendarEvent,
+  Employee,
+  GeoPoint,
+  LeaveBalance,
+  LeaveRequest,
+  LeaveStatus,
+  LeaveType,
+} from '../../types';
 import {
   ADMIN_CREDENTIALS,
   DEMO_CREDENTIALS,
   MANAGER_CREDENTIALS,
+  generateMonthlySalary,
   generateSeedAttendance,
   seedAdmin,
+  seedCalendarEvents,
   seedEmployee,
   seedLeaveBalances,
   seedLeaveRequests,
@@ -22,6 +33,8 @@ const KEYS = {
   leaveRequestsByEmployee: 'leave_requests_by_employee',
   leaveBalancesByEmployee: 'leave_balances_by_employee',
   sessions: 'sessions',
+  calendarEvents: 'calendar_events',
+  otpCodes: 'otp_codes',
 };
 
 const NETWORK_DELAY_MS = 650;
@@ -180,11 +193,19 @@ async function ensureLegacyRolesMigrated(): Promise<void> {
   let changed = false;
 
   const fixed = employees.map((e) => {
-    if (e.role !== 'admin' && e.role !== 'manager' && e.role !== 'employee') {
+    let next = e;
+    if (next.role !== 'admin' && next.role !== 'manager' && next.role !== 'employee') {
       changed = true;
-      return { ...e, role: 'employee' as const, reportsToId: defaultManager?.id };
+      next = { ...next, role: 'employee' as const, reportsToId: defaultManager?.id };
     }
-    return e;
+    // Backfills accounts created in a browser before payslips existed, so
+    // localStorage data from an earlier session doesn't end up with an
+    // undefined salary breaking payslip math.
+    if (typeof next.monthlySalary !== 'number') {
+      changed = true;
+      next = { ...next, monthlySalary: generateMonthlySalary(next.role, next.id) };
+    }
+    return next;
   });
 
   if (changed) await localStore.set(KEYS.employees, fixed);
@@ -206,6 +227,14 @@ async function ensureSeeded(): Promise<void> {
   await ensureOrgSeeded();
   await ensureReportingChainsValid();
   await ensureEmployeeDataSeeded();
+  await ensureCalendarEventsSeeded();
+}
+
+async function ensureCalendarEventsSeeded(): Promise<void> {
+  const events = await localStore.get<CalendarEvent[]>(KEYS.calendarEvents);
+  if (!events) {
+    await localStore.set(KEYS.calendarEvents, seedCalendarEvents);
+  }
 }
 
 async function requireSession(token: string): Promise<string> {
@@ -230,11 +259,16 @@ function isAdminVisible(e: Employee): boolean {
 }
 
 export const mockServer = {
-  async login(
+  // Step 1 of login: validates credentials + role exactly like the old
+  // one-step login used to, then issues a one-time code instead of a
+  // session. There's no real email/SMS provider wired up to this app, so the
+  // code is returned directly (`devCode`) rather than pretending to deliver
+  // it — the UI shows it the same way the existing "Demo login" hint does.
+  async requestLoginOtp(
     email: string,
     password: string,
     expectedRole?: Employee['role'],
-  ): Promise<{ token: string; employee: Employee }> {
+  ): Promise<{ email: string; role: Employee['role']; devCode: string }> {
     await ensureSeeded();
     await delay();
 
@@ -258,6 +292,31 @@ export const mockServer = {
         'ROLE_MISMATCH',
       );
     }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const otpMap = (await localStore.get<Record<string, { code: string; expiresAt: number }>>(KEYS.otpCodes)) ?? {};
+    otpMap[normalizedEmail] = { code, expiresAt: Date.now() + 5 * 60 * 1000 };
+    await localStore.set(KEYS.otpCodes, otpMap);
+
+    return { email: normalizedEmail, role: employee.role, devCode: code };
+  },
+
+  // Step 2 of login: exchanges a valid, unexpired code for a real session,
+  // the same shape the old one-step login() used to return.
+  async verifyLoginOtp(email: string, code: string): Promise<{ token: string; employee: Employee }> {
+    await delay(400);
+
+    const normalizedEmail = email.trim().toLowerCase();
+    const otpMap = (await localStore.get<Record<string, { code: string; expiresAt: number }>>(KEYS.otpCodes)) ?? {};
+    const entry = otpMap[normalizedEmail];
+    if (!entry || entry.code !== code.trim() || Date.now() > entry.expiresAt) {
+      throw new ApiError('That code is invalid or has expired.', 'INVALID_OTP');
+    }
+    delete otpMap[normalizedEmail];
+    await localStore.set(KEYS.otpCodes, otpMap);
+
+    const employees = (await localStore.get<Employee[]>(KEYS.employees)) ?? [seedEmployee];
+    const employee = employees.find((e) => e.email.toLowerCase() === normalizedEmail) ?? seedEmployee;
 
     const token = `tok_${Date.now()}_${Math.random().toString(36).slice(2)}`;
     const sessions = (await localStore.get<Record<string, string>>(KEYS.sessions)) ?? {};
@@ -306,6 +365,7 @@ export const mockServer = {
       avatarUri: null,
       role: 'employee',
       reportsToId: manager.id,
+      monthlySalary: generateMonthlySalary('employee', employeeId),
     };
 
     await localStore.set(KEYS.employees, [...employees, employee]);
@@ -554,6 +614,7 @@ export const mockServer = {
       avatarUri: null,
       role: 'manager',
       mustChangePassword: true,
+      monthlySalary: generateMonthlySalary('manager', employeeId),
     };
 
     await localStore.set(KEYS.employees, [...employees, manager]);
@@ -620,6 +681,7 @@ export const mockServer = {
       role: 'employee',
       reportsToId: manager.id,
       mustChangePassword: true,
+      monthlySalary: generateMonthlySalary('employee', employeeId),
     };
 
     await localStore.set(KEYS.employees, [...employees, employee]);
@@ -866,6 +928,50 @@ export const mockServer = {
     if (decision === 'approve' && request.type !== 'Unpaid') {
       await deductLeaveBalance(employeeId, request);
     }
+  },
+
+  // ---- Company calendar (holidays & meetings) ----
+  // Every role can view; only admins can add or remove entries.
+
+  async getCalendarEvents(): Promise<CalendarEvent[]> {
+    await ensureSeeded();
+    await delay(300);
+    const events = (await localStore.get<CalendarEvent[]>(KEYS.calendarEvents)) ?? [];
+    return [...events].sort((a, b) => (a.date < b.date ? -1 : 1));
+  },
+
+  async createCalendarEvent(
+    adminToken: string,
+    input: { title: string; type: CalendarEvent['type']; date: string; description?: string },
+  ): Promise<CalendarEvent> {
+    const admin = await resolveEmployeeForToken(adminToken);
+    if (admin.role !== 'admin') {
+      throw new ApiError('Only admins can add calendar events.', 'FORBIDDEN');
+    }
+    await delay(400);
+
+    const event: CalendarEvent = {
+      id: `CAL-${Date.now()}`,
+      title: input.title.trim(),
+      type: input.type,
+      date: input.date,
+      description: input.description?.trim() || undefined,
+    };
+
+    const events = (await localStore.get<CalendarEvent[]>(KEYS.calendarEvents)) ?? [];
+    await localStore.set(KEYS.calendarEvents, [...events, event]);
+    return event;
+  },
+
+  async deleteCalendarEvent(adminToken: string, id: string): Promise<void> {
+    const admin = await resolveEmployeeForToken(adminToken);
+    if (admin.role !== 'admin') {
+      throw new ApiError('Only admins can remove calendar events.', 'FORBIDDEN');
+    }
+    await delay(300);
+
+    const events = (await localStore.get<CalendarEvent[]>(KEYS.calendarEvents)) ?? [];
+    await localStore.set(KEYS.calendarEvents, events.filter((e) => e.id !== id));
   },
 };
 

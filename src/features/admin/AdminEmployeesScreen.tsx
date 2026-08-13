@@ -2,15 +2,18 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Screen } from '../../components/Screen';
-import { Card } from '../../components/Card';
+import { GlassCard } from '../../components/GlassCard';
 import { Loader } from '../../components/Loader';
 import { EmptyState } from '../../components/EmptyState';
 import { AppButton } from '../../components/AppButton';
+import { VideoHero } from '../../components/VideoHero';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { CreateManagerModal } from './components/CreateManagerModal';
 import { CreateEmployeeModal } from './components/CreateEmployeeModal';
 import { useTheme, type Theme } from '../../theme/ThemeContext';
 import { useAdminEmployees } from '../../admin/hooks/useAdminData';
 import { getInitials } from '../../utils/getInitials';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
 import type { Employee } from '../../types';
 
 export function AdminEmployeesScreen() {
@@ -32,9 +35,16 @@ export function AdminEmployeesScreen() {
 
   return (
     <Screen edges={['top', 'left', 'right']}>
+      <GradientBlobBackdrop />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>Employees</Text>
-        <Text style={styles.subheading}>{employees.length} in the company roster</Text>
+        <VideoHero
+          theme={theme}
+          title="Employees"
+          subtitle={`${employees.length} in the company roster`}
+          videoSrc={NATIVE_VIDEO.calendar}
+          height={120}
+        />
+        <View style={styles.heroSpacer} />
 
         <View style={styles.headerActions}>
           <AppButton
@@ -64,7 +74,7 @@ export function AdminEmployeesScreen() {
             message="Employees will appear here once they register."
           />
         ) : (
-          <Card padded={false}>
+          <GlassCard padded={false}>
             {employees.map((emp, index) => {
               const meta = ROLE_META[emp.role];
               const isExpanded = expandedId === emp.id;
@@ -83,6 +93,11 @@ export function AdminEmployeesScreen() {
                       <Text style={styles.meta}>
                         {emp.department} · {emp.id}
                       </Text>
+                      {!!emp.reportsToId && (
+                        <Text style={styles.meta}>
+                          Reports to {employees.find((m) => m.id === emp.reportsToId)?.name ?? '—'}
+                        </Text>
+                      )}
                     </View>
                     <View style={[styles.roleBadge, { backgroundColor: meta.bg }]}>
                       <Text style={[styles.roleBadgeText, { color: meta.color }]}>{meta.label}</Text>
@@ -105,7 +120,7 @@ export function AdminEmployeesScreen() {
                 </View>
               );
             })}
-          </Card>
+          </GlassCard>
         )}
       </ScrollView>
     </Screen>
@@ -118,9 +133,8 @@ function createStyles(theme: Theme) {
     padding: theme.spacing.md,
     paddingBottom: theme.spacing.xxl,
   },
-  heading: {
-    ...theme.typography.h2,
-    color: theme.colors.textPrimary,
+  heroSpacer: {
+    height: theme.spacing.md,
   },
   subheading: {
     ...theme.typography.body,

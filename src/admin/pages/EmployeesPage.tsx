@@ -5,6 +5,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { AdminCard as Card } from '../components/AdminCard';
 import { AdminLoader as Loader } from '../components/AdminLoader';
 import { AdminEmptyState as EmptyState } from '../components/AdminEmptyState';
+import { DashboardHero } from '../components/DashboardHero';
 import { AppButton } from '../../components/AppButton';
 import { CreateManagerModal } from '../components/CreateManagerModal';
 import { CreateEmployeeModal } from '../components/CreateEmployeeModal';
@@ -29,28 +30,30 @@ export function EmployeesPage() {
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.heading}>Employees</Text>
-          <Text style={styles.subheading}>{employees.length} employees in the company roster</Text>
-        </View>
-        <View style={styles.headerActions}>
-          <AppButton
-            label="Create Manager"
-            onPress={() => setCreateManagerVisible(true)}
-            icon={<MaterialCommunityIcons name="account-plus-outline" size={18} color={theme.colors.onPrimary} />}
-            fullWidth={false}
-            style={styles.createButton}
-          />
-          <AppButton
-            label="Create Employee"
-            onPress={() => setCreateEmployeeVisible(true)}
-            icon={<MaterialCommunityIcons name="account-plus-outline" size={18} color={theme.colors.onPrimary} />}
-            fullWidth={false}
-            style={styles.createButton}
-          />
-        </View>
-      </View>
+      <DashboardHero
+        theme={theme}
+        title="Employees"
+        subtitle={`${employees.length} employees in the company roster`}
+        videoSrc="/videos/hero-calendar.mp4"
+        right={
+          <View style={styles.headerActions}>
+            <AppButton
+              label="Create Manager"
+              onPress={() => setCreateManagerVisible(true)}
+              icon={<MaterialCommunityIcons name="account-plus-outline" size={18} color={theme.colors.onPrimary} />}
+              fullWidth={false}
+              style={styles.createButton}
+            />
+            <AppButton
+              label="Create Employee"
+              onPress={() => setCreateEmployeeVisible(true)}
+              icon={<MaterialCommunityIcons name="account-plus-outline" size={18} color={theme.colors.onPrimary} />}
+              fullWidth={false}
+              style={styles.createButton}
+            />
+          </View>
+        }
+      />
 
       <CreateManagerModal visible={createManagerVisible} onClose={() => setCreateManagerVisible(false)} />
       <CreateEmployeeModal visible={createEmployeeVisible} onClose={() => setCreateEmployeeVisible(false)} />
@@ -68,10 +71,12 @@ export function EmployeesPage() {
               <Text style={[styles.headerCell, styles.nameCol]}>Name</Text>
               <Text style={[styles.headerCell, styles.metaCol]}>Role</Text>
               <Text style={[styles.headerCell, styles.metaCol]}>Department</Text>
+              <Text style={[styles.headerCell, styles.metaCol]}>Reports To</Text>
               <Text style={[styles.headerCell, styles.metaCol]}>ID</Text>
             </View>
             {employees.map((emp) => {
               const isActive = selected?.id === emp.id;
+              const manager = employees.find((e) => e.id === emp.reportsToId);
               return (
                 <Pressable
                   key={emp.id}
@@ -91,6 +96,9 @@ export function EmployeesPage() {
                     <RoleBadge role={emp.role} />
                   </View>
                   <Text style={[styles.metaCol, styles.metaText]}>{emp.department}</Text>
+                  <Text style={[styles.metaCol, styles.metaText]} numberOfLines={1}>
+                    {manager ? manager.name : '—'}
+                  </Text>
                   <Text style={[styles.metaCol, styles.metaText]}>{emp.id}</Text>
                 </Pressable>
               );
@@ -134,6 +142,7 @@ function EmployeeDetail({
   const attendanceQuery = useAdminEmployeeAttendance(employee.id);
   const attendance = attendanceQuery.data ?? [];
   const teamMembers = allEmployees.filter((e) => e.reportsToId === employee.id);
+  const manager = allEmployees.find((e) => e.id === employee.reportsToId);
 
   return (
     <Card style={styles.detailCard}>
@@ -147,6 +156,7 @@ function EmployeeDetail({
             {employee.department} · {employee.phone}
           </Text>
           <Text style={styles.detailMeta}>{employee.id}</Text>
+          {!!manager && <Text style={styles.detailMeta}>Reports to {manager.name}</Text>}
         </View>
       </View>
 

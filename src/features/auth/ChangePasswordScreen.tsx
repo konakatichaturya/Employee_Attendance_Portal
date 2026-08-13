@@ -6,12 +6,16 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Screen } from '../../components/Screen';
 import { InputField } from '../../components/InputField';
 import { AppButton } from '../../components/AppButton';
+import { VideoHero } from '../../components/VideoHero';
+import { GlassCard } from '../../components/GlassCard';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { useTheme, type Theme } from '../../theme/ThemeContext';
 import { useAppSelector } from '../../store/hooks';
 import { useChangePassword } from '../../hooks/useProfile';
 import { changePasswordSchema, type ChangePasswordFormValues } from './schema';
 import { showErrorToast, showSuccessToast } from '../../components/toast';
-import { AuthHeader } from './AuthHeader';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
+import { vivid } from '../../marketing/vividPalette';
 
 export function ChangePasswordScreen() {
   const { theme } = useTheme();
@@ -39,11 +43,13 @@ export function ChangePasswordScreen() {
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']}>
+      <GradientBlobBackdrop />
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <AuthHeader icon="lock-reset" tagline="Set a new password to continue" />
+          <VideoHero theme={theme} title="Almost there" subtitle="Set a new password to continue" videoSrc={NATIVE_VIDEO.leave} height={130} />
+          <View style={styles.bannerSpacer} />
 
-          <View style={styles.form}>
+          <GlassCard style={styles.form}>
             <Text style={styles.heading}>Choose a new password</Text>
             <Text style={styles.subheading}>
               {employee?.name ? `Hi ${employee.name}, ` : ''}for security, set your own password before continuing
@@ -109,7 +115,7 @@ export function ChangePasswordScreen() {
               size="lg"
               style={styles.submitButton}
             />
-          </View>
+          </GlassCard>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
@@ -123,6 +129,9 @@ function createStyles(theme: Theme) {
     flexGrow: 1,
     padding: theme.spacing.lg,
     justifyContent: 'center',
+  },
+  bannerSpacer: {
+    height: theme.spacing.lg,
   },
   form: {
     width: '100%',
@@ -139,6 +148,8 @@ function createStyles(theme: Theme) {
   },
   submitButton: {
     marginTop: theme.spacing.sm,
+    backgroundColor: vivid.blue,
+    borderRadius: theme.radius.pill,
   },
   });
 }

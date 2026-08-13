@@ -6,10 +6,10 @@ import { useTheme, type Theme } from '../theme/ThemeContext';
 import { useAppDispatch } from '../store/hooks';
 import { logout } from '../store/slices/authSlice';
 import { ConfirmModal } from '../components/ConfirmModal';
+import { Logo } from '../components/Logo';
 
 interface AppDrawerContentProps extends DrawerContentComponentProps {
   brandLabel?: string;
-  brandIcon?: keyof typeof MaterialCommunityIcons.glyphMap;
   icons: Record<string, keyof typeof MaterialCommunityIcons.glyphMap>;
 }
 
@@ -22,7 +22,6 @@ export function AppDrawerContent({
   navigation,
   descriptors,
   brandLabel = 'WorkTrack',
-  brandIcon = 'calendar-check',
   icons,
 }: AppDrawerContentProps) {
   const { theme, mode, toggleMode } = useTheme();
@@ -41,9 +40,7 @@ export function AppDrawerContent({
   return (
     <DrawerContentScrollView style={styles.scrollView} contentContainerStyle={styles.container}>
       <View style={styles.brandRow}>
-        <View style={styles.brandIcon}>
-          <MaterialCommunityIcons name={brandIcon} size={20} color={theme.colors.onPrimary} />
-        </View>
+        <Logo theme={theme} size="sm" />
         <Text style={styles.brandText}>{brandLabel}</Text>
       </View>
 
@@ -110,14 +107,6 @@ function createStyles(theme: Theme) {
       gap: theme.spacing.xs,
       paddingHorizontal: theme.spacing.sm,
       marginBottom: theme.spacing.lg,
-    },
-    brandIcon: {
-      width: 32,
-      height: 32,
-      borderRadius: theme.radius.sm,
-      backgroundColor: theme.colors.primary,
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     brandText: {
       ...theme.typography.subtitle,

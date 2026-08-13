@@ -18,13 +18,17 @@ import { Screen } from '../../components/Screen';
 import { InputField } from '../../components/InputField';
 import { AppButton } from '../../components/AppButton';
 import { PillSelector } from '../../components/PillSelector';
+import { VideoHero } from '../../components/VideoHero';
+import { GlassCard } from '../../components/GlassCard';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { useTheme, type Theme } from '../../theme/ThemeContext';
 import { useAppDispatch } from '../../store/hooks';
 import { register } from '../../store/slices/authSlice';
 import { authApi } from '../../services/api/authApi';
 import { registerSchema, type RegisterFormValues } from './schema';
 import { showErrorToast, showSuccessToast } from '../../components/toast';
-import { AuthHeader } from './AuthHeader';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
+import { vivid } from '../../marketing/vividPalette';
 import type { AuthStackParamList } from '../../navigation/types';
 
 export function RegisterScreen() {
@@ -73,15 +77,17 @@ export function RegisterScreen() {
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']}>
+      <GradientBlobBackdrop />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <AuthHeader icon="account-plus" tagline="Create your team account" />
+          <VideoHero theme={theme} title="Sign up" subtitle="Create your team account" videoSrc={NATIVE_VIDEO.leave} height={130} />
+          <View style={styles.bannerSpacer} />
 
-          <View style={styles.form}>
-            <Text style={styles.heading}>Sign up</Text>
+          <GlassCard style={styles.form}>
+            <Text style={styles.heading}>Employee details</Text>
             <Text style={styles.subheading}>
               Enter your employee details to get started
             </Text>
@@ -249,7 +255,7 @@ export function RegisterScreen() {
                 Already have an account? <Text style={styles.loginLinkTextBold}>Sign in</Text>
               </Text>
             </Pressable>
-          </View>
+          </GlassCard>
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
@@ -263,6 +269,9 @@ function createStyles(theme: Theme) {
     flexGrow: 1,
     padding: theme.spacing.lg,
     justifyContent: 'center',
+  },
+  bannerSpacer: {
+    height: theme.spacing.lg,
   },
   form: {
     width: '100%',
@@ -279,6 +288,8 @@ function createStyles(theme: Theme) {
   },
   submitButton: {
     marginTop: theme.spacing.sm,
+    backgroundColor: vivid.blue,
+    borderRadius: theme.radius.pill,
   },
   loginLink: {
     marginTop: theme.spacing.lg,
@@ -289,7 +300,7 @@ function createStyles(theme: Theme) {
     color: theme.colors.textSecondary,
   },
   loginLinkTextBold: {
-    color: theme.colors.primary,
+    color: vivid.blue,
     fontWeight: '700',
   },
   });

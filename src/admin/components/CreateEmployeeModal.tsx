@@ -3,7 +3,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { useWebTheme, type WebTheme } from '../ThemeContext';
 import { AppButton } from '../../components/AppButton';
 import { InputField } from '../../components/InputField';
-import { PillSelector } from '../../components/PillSelector';
+import { DropdownField } from './DropdownField';
 import { useCreateEmployee, useManagers } from '../hooks/useAdminData';
 import { showErrorToast, showSuccessToast } from '../../components/toast';
 
@@ -16,7 +16,7 @@ const initialForm = { employeeId: '', name: '', email: '', phone: '', department
 
 export function CreateEmployeeModal({ visible, onClose }: CreateEmployeeModalProps) {
   const { theme } = useWebTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const styles = useMemo(() => createStyles(theme), [theme]); 
   const managersQuery = useManagers();
   const createEmployee = useCreateEmployee();
   const [form, setForm] = useState(initialForm);
@@ -61,7 +61,7 @@ export function CreateEmployeeModal({ visible, onClose }: CreateEmployeeModalPro
             <InputField label="Email" value={form.email} onChangeText={setField('email')} placeholder="jane@company.com" keyboardType="email-address" autoCapitalize="none" />
             <InputField label="Phone Number" value={form.phone} onChangeText={setField('phone')} placeholder="+91 98765 43210" keyboardType="phone-pad" />
             <InputField label="Department" value={form.department} onChangeText={setField('department')} placeholder="Engineering" />
-            <PillSelector
+            <DropdownField
               label="Manager"
               value={form.managerId || null}
               onChange={setField('managerId')}

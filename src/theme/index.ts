@@ -32,3 +32,40 @@ export type AppTheme = typeof theme;
 export * from './colors';
 export * from './spacing';
 export * from './typography';
+
+// A structurally-widened theme shape (colors as plain `string`, not the literal hex
+// types `AppTheme` infers) — used by components shared across the native `Theme` and
+// web `WebTheme` contexts, since both of those are themselves string-widened (their
+// `colors` object is chosen dynamically between light/dark at runtime) and neither is
+// directly assignable to the narrower `AppTheme`.
+export interface SharedThemeColors {
+  background: string;
+  surface: string;
+  surfaceAlt: string;
+  border: string;
+  textPrimary: string;
+  textSecondary: string;
+  textMuted: string;
+  textInverse: string;
+  primary: string;
+  primaryDark: string;
+  primaryLight: string;
+  onPrimary: string;
+  accent: string;
+  onAccent: string;
+  success: string;
+  successBg: string;
+  warning: string;
+  warningBg: string;
+  danger: string;
+  dangerBg: string;
+  shadow: string;
+}
+
+export interface SharedTheme {
+  colors: SharedThemeColors;
+  spacing: typeof spacing;
+  radius: typeof radius;
+  elevation: typeof elevation;
+  typography: typeof typography;
+}

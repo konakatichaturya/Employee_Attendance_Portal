@@ -5,11 +5,14 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { format, parseISO } from 'date-fns';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Screen } from '../../components/Screen';
-import { Card } from '../../components/Card';
+import { GlassCard } from '../../components/GlassCard';
 import { Loader } from '../../components/Loader';
 import { EmptyState } from '../../components/EmptyState';
+import { VideoHero } from '../../components/VideoHero';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { useTheme, type Theme } from '../../theme/ThemeContext';
 import { useLeaveRequests } from '../../hooks/useLeaveQueries';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
 import type { LeaveRequest, LeaveStatus } from '../../types';
 import type { LeaveStackParamList } from '../../navigation/types';
 
@@ -31,7 +34,7 @@ function LeaveRequestCard({ item }: { item: LeaveRequest }) {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const colors = statusColor(item.status, theme);
   return (
-    <Card style={styles.card}>
+    <GlassCard style={styles.card}>
       <View style={styles.cardHeader}>
         <Text style={styles.type}>{item.type} Leave</Text>
         <View style={[styles.badge, { backgroundColor: colors.bg }]}>
@@ -45,7 +48,7 @@ function LeaveRequestCard({ item }: { item: LeaveRequest }) {
       <Text style={styles.reason} numberOfLines={2}>
         {item.reason}
       </Text>
-    </Card>
+    </GlassCard>
   );
 }
 
@@ -61,19 +64,7 @@ export function LeaveStatusScreen() {
 
   return (
     <Screen>
-      <View style={styles.header}>
-        <Text style={styles.heading}>Leave Requests</Text>
-        <Pressable
-          style={styles.newButton}
-          onPress={() => navigation.navigate('ApplyLeave')}
-          accessibilityRole="button"
-          accessibilityLabel="Apply for leave"
-        >
-          <MaterialCommunityIcons name="plus" size={18} color={theme.colors.onPrimary} />
-          <Text style={styles.newButtonText}>Apply</Text>
-        </Pressable>
-      </View>
-
+      <GradientBlobBackdrop />
       <FlatList
         data={requestsQuery.data ?? []}
         keyExtractor={(item) => item.id}
@@ -81,6 +72,26 @@ export function LeaveStatusScreen() {
         renderItem={({ item }) => <LeaveRequestCard item={item} />}
         refreshControl={
           <RefreshControl refreshing={requestsQuery.isRefetching} onRefresh={() => requestsQuery.refetch()} />
+        }
+        ListHeaderComponent={
+          <VideoHero
+            theme={theme}
+            title="Leave Requests"
+            subtitle="Track every request you've submitted"
+            videoSrc={NATIVE_VIDEO.leave}
+            height={120}
+            right={
+              <Pressable
+                style={styles.newButton}
+                onPress={() => navigation.navigate('ApplyLeave')}
+                accessibilityRole="button"
+                accessibilityLabel="Apply for leave"
+              >
+                <MaterialCommunityIcons name="plus" size={18} color={theme.colors.onPrimary} />
+                <Text style={styles.newButtonText}>Apply</Text>
+              </Pressable>
+            }
+          />
         }
         ListEmptyComponent={
           <EmptyState

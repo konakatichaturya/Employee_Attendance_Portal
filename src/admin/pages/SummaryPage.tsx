@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import { AdminCard as Card } from '../components/AdminCard';
 import { AdminLoader as Loader } from '../components/AdminLoader';
 import { useWebTheme, type WebTheme } from '../ThemeContext';
+import { DashboardHero } from '../components/DashboardHero';
 import { DonutChart } from '../components/DonutChart';
 import { KpiTileRow } from '../components/KpiTileRow';
 import { TrendLineChart } from '../components/TrendLineChart';
@@ -45,13 +46,13 @@ export function SummaryPage() {
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <View style={styles.headerRow}>
-        <View>
-          <Text style={styles.heading}>Attendance Dashboard</Text>
-          <Text style={styles.subheading}>Overview of employee attendance</Text>
-        </View>
-        <Text style={styles.updatedText}>Last updated: {format(new Date(), 'MMM d, yyyy · h:mm a')}</Text>
-      </View>
+      <DashboardHero
+        theme={theme}
+        title="Attendance Dashboard"
+        subtitle="Overview of employee attendance"
+        videoSrc="/videos/hero-attendance.mp4"
+        right={<Text style={styles.updatedText}>Last updated: {format(new Date(), 'MMM d, yyyy · h:mm a')}</Text>}
+      />
 
       <AttendanceInsightsCard
         presentRate={stats.presentRate}
@@ -173,7 +174,7 @@ function createStyles(theme: WebTheme) {
     },
     updatedText: {
       ...theme.typography.caption,
-      color: theme.colors.textMuted,
+      color: 'rgba(255,255,255,0.85)',
     },
     spacer: {
       height: theme.spacing.lg,

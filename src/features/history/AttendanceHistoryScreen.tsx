@@ -1,15 +1,18 @@
 import React, { useMemo, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 import { isWithinInterval, parseISO, startOfDay, subDays } from 'date-fns';
 import { Screen } from '../../components/Screen';
 import { Loader } from '../../components/Loader';
 import { EmptyState } from '../../components/EmptyState';
 import { DateField } from '../../components/DateField';
 import { StatTileRow } from '../../components/StatTileRow';
+import { VideoHero } from '../../components/VideoHero';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { useTheme, type Theme } from '../../theme/ThemeContext';
 import { useAttendanceHistory } from '../../hooks/useAttendanceQueries';
 import { HistoryFilterBar } from './components/HistoryFilterBar';
 import { AttendanceHistoryCard } from './components/AttendanceHistoryCard';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
 import type { AttendanceRecord, HistoryFilter } from '../../types';
 
 export function AttendanceHistoryScreen() {
@@ -44,8 +47,16 @@ export function AttendanceHistoryScreen() {
 
   return (
     <Screen>
+      <GradientBlobBackdrop />
       <View style={styles.header}>
-        <Text style={styles.heading}>Attendance History</Text>
+        <VideoHero
+          theme={theme}
+          title="Attendance History"
+          subtitle={`${filteredRecords.length} records in range`}
+          videoSrc={NATIVE_VIDEO.attendance}
+          height={110}
+        />
+        <View style={styles.heroSpacer} />
         <HistoryFilterBar value={filter} onChange={setFilter} />
 
         {filter === 'custom' && (
@@ -120,10 +131,8 @@ function createStyles(theme: Theme) {
       paddingHorizontal: theme.spacing.md,
       paddingTop: theme.spacing.sm,
     },
-    heading: {
-      ...theme.typography.h2,
-      color: theme.colors.textPrimary,
-      marginBottom: theme.spacing.sm,
+    heroSpacer: {
+      height: theme.spacing.sm,
     },
     customRow: {
       flexDirection: 'row',

@@ -6,6 +6,11 @@ import { Provider } from 'react-redux';
 import { PaperProvider } from 'react-native-paper';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
+import {
+  useFonts,
+  Fredoka_600SemiBold,
+  Fredoka_700Bold,
+} from '@expo-google-fonts/fredoka';
 import { store } from './src/store/store';
 import { useAppDispatch, useAppSelector } from './src/store/hooks';
 import { bootstrapAuth, forceUnauthenticated } from './src/store/slices/authSlice';
@@ -28,6 +33,7 @@ function AppBootstrap() {
   const dispatch = useAppDispatch();
   const status = useAppSelector((s) => s.auth.status);
   const [dbReady, setDbReady] = useState(false);
+  const [fontsLoaded] = useFonts({ Fredoka_600SemiBold, Fredoka_700Bold });
 
   useAttendanceOfflineSync();
   useLeaveDecisionNotifications();
@@ -42,7 +48,7 @@ function AppBootstrap() {
     })();
   }, [dispatch]);
 
-  if (!dbReady || status === 'idle') {
+  if (!dbReady || !fontsLoaded || status === 'idle') {
     return <Loader fullScreen label="Loading WorkTrack..." />;
   }
 

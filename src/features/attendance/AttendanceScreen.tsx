@@ -1,18 +1,21 @@
 import React, { useMemo, useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, View } from 'react-native';
 import { format } from 'date-fns';
 import { Screen } from '../../components/Screen';
 import { OfflineBanner } from '../../components/OfflineBanner';
 import { SuccessOverlay } from '../../components/SuccessOverlay';
 import { AppButton } from '../../components/AppButton';
+import { VideoHero } from '../../components/VideoHero';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { useTheme, type Theme } from '../../theme/ThemeContext';
 import { useCheckIn, useCheckOut, useTodayAttendance } from '../../hooks/useAttendanceQueries';
 import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 import { AttendanceStatusCard } from '../dashboard/components/AttendanceStatusCard';
 import { showErrorToast } from '../../components/toast';
 import { LocationPermissionDeniedError } from '../../services/location/locationService';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
 import type { DashboardStackParamList } from '../../navigation/types';
 
 type Nav = NativeStackNavigationProp<DashboardStackParamList>;
@@ -66,12 +69,17 @@ export function AttendanceScreen() {
 
   return (
     <Screen>
+      <GradientBlobBackdrop />
       {isOffline && <OfflineBanner />}
       <ScrollView contentContainerStyle={styles.content}>
-        <View style={styles.header}>
-          <Text style={styles.heading}>Attendance</Text>
-          <Text style={styles.subheading}>{format(new Date(), 'EEEE, dd MMMM yyyy')}</Text>
-        </View>
+        <VideoHero
+          theme={theme}
+          title="Attendance"
+          subtitle={format(new Date(), 'EEEE, dd MMMM yyyy')}
+          videoSrc={NATIVE_VIDEO.attendance}
+          height={120}
+        />
+        <View style={styles.heroSpacer} />
 
         <AttendanceStatusCard
           record={todayQuery.data}
@@ -104,17 +112,8 @@ function createStyles(theme: Theme) {
       padding: theme.spacing.md,
       paddingBottom: theme.spacing.xxl,
     },
-    header: {
-      marginBottom: theme.spacing.md,
-    },
-    heading: {
-      ...theme.typography.h2,
-      color: theme.colors.textPrimary,
-    },
-    subheading: {
-      ...theme.typography.body,
-      color: theme.colors.textSecondary,
-      marginTop: 2,
+    heroSpacer: {
+      height: theme.spacing.md,
     },
     historyButton: {
       marginTop: theme.spacing.md,

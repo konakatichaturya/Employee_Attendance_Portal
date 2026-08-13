@@ -4,16 +4,29 @@ import { Controller, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import Svg, { Defs, LinearGradient, Rect, Stop } from 'react-native-svg';
 import { InputField } from '../components/InputField';
 import { AppButton } from '../components/AppButton';
 import { PillSelector } from '../components/PillSelector';
+import { Logo } from '../components/Logo';
 import { theme } from '../theme';
-import { useAppDispatch } from '../store/hooks';
-import { login, register } from '../store/slices/authSlice';
+import { useAppDispatch, useAppSelector } from '../store/hooks';
+import { clearPendingOtp, register, requestLoginOtp, verifyLoginOtp } from '../store/slices/authSlice';
 import { authApi } from '../services/api/authApi';
 import { loginSchema, registerSchema, type LoginFormValues, type RegisterFormValues } from '../features/auth/schema';
 import { showErrorToast, showSuccessToast } from '../components/toast';
 import { ADMIN_CREDENTIALS, DEMO_CREDENTIALS, MANAGER_CREDENTIALS } from '../services/mock/seed';
+import { RoboGuide } from '../marketing/components/RoboGuide';
+import { vivid, VIVID_FEATURE_COLORS } from '../marketing/vividPalette';
+
+const videoBgStyle: React.CSSProperties = {
+  position: 'absolute',
+  top: 0,
+  left: 0,
+  width: '100%',
+  height: '100%',
+  objectFit: 'cover',
+};
 
 const FEATURES: { icon: keyof typeof MaterialCommunityIcons.glyphMap; label: string }[] = [
   { icon: 'clock-check-outline', label: 'Real-time attendance tracking across your company' },
@@ -29,9 +42,21 @@ const PERSONA_META: Record<Persona, { label: string; icon: keyof typeof Material
   manager: { label: 'Manager', icon: 'account-tie-outline' },
 };
 
-export function AdminAuthPage() {
-  const [persona, setPersona] = useState<Persona>('admin');
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+const PERSONA_CREDENTIALS: Record<Persona, { email: string; password: string }> = {
+  admin: ADMIN_CREDENTIALS,
+  employee: DEMO_CREDENTIALS,
+  manager: MANAGER_CREDENTIALS,
+};
+
+interface AdminAuthPageProps {
+  initialPersona?: Persona;
+  initialMode?: 'login' | 'register';
+  onBack?: () => void;
+}
+
+export function AdminAuthPage({ initialPersona = 'admin', initialMode = 'login', onBack }: AdminAuthPageProps) {
+  const [persona, setPersona] = useState<Persona>(initialPersona);
+  const [mode, setMode] = useState<'login' | 'register'>(initialMode);
 
   const handlePersonaChange = (next: Persona) => {
     setPersona(next);
@@ -41,25 +66,62 @@ export function AdminAuthPage() {
   return (
     <View style={styles.root}>
       <View style={styles.brandPanel}>
-        <View style={styles.brandIcon}>
-          <MaterialCommunityIcons name="calendar-check" size={30} color={theme.colors.onPrimary} />
+        {/* Same free, no-attribution Mixkit clip used on the marketing hero
+            (public/videos/NOTICE.md) — a semi-transparent gradient wash sits
+            on top so the video reads as a colored background, not a raw clip,
+            and the white text stays legible. */}
+        {React.createElement('video', {
+          src: '/videos/hero-leave.mp4',
+          autoPlay: true,
+          muted: true,
+          loop: true,
+          playsInline: true,
+          style: videoBgStyle,
+        })}
+        <View style={styles.videoScrim} />
+        <Svg style={StyleSheet.absoluteFill} width="100%" height="100%">
+          <Defs>
+            <LinearGradient id="authGradient" x1="0" y1="0" x2="1" y2="1">
+              <Stop offset="0" stopColor={vivid.blue} />
+              <Stop offset="0.75" stopColor={vivid.blue} />
+              <Stop offset="1" stopColor={vivid.purple} />
+            </LinearGradient>
+          </Defs>
+          <Rect x={0} y={0} width="100%" height="100%" fill="url(#authGradient)" fillOpacity={0.4} />
+        </Svg>
+        <View style={[styles.blob, styles.blobTop]} />
+        <View style={[styles.blob, styles.blobBottom]} />
+
+        {!!onBack && (
+          <Pressable onPress={onBack} style={styles.backLink} accessibilityRole="button">
+            <MaterialCommunityIcons name="arrow-left" size={16} color={theme.colors.onPrimary} />
+            <Text style={styles.backLinkText}>Back to WorkTrack.com</Text>
+          </Pressable>
+        )}
+        <View style={styles.brandLogo}>
+          <Logo theme={theme} size="lg" tone="inverse" />
         </View>
         <Text style={styles.brandTitle}>WorkTrack</Text>
         <Text style={styles.brandTagline}>Attendance & leave management for your whole team.</Text>
 
         <View style={styles.featureList}>
-          {FEATURES.map((f) => (
-            <View key={f.label} style={styles.featureRow}>
-              <View style={styles.featureIcon}>
-                <MaterialCommunityIcons name={f.icon} size={18} color={theme.colors.onPrimary} />
+          {FEATURES.map((f, index) => {
+            const color = VIVID_FEATURE_COLORS[index % VIVID_FEATURE_COLORS.length];
+            return (
+              <View key={f.label} style={styles.featureRow}>
+                <View style={[styles.featureIcon, { backgroundColor: '#FFFFFF', shadowColor: color }]}>
+                  <MaterialCommunityIcons name={f.icon} size={18} color={color} />
+                </View>
+                <Text style={styles.featureText}>{f.label}</Text>
               </View>
-              <Text style={styles.featureText}>{f.label}</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
       </View>
 
       <View style={styles.formPanel}>
+        <View style={[styles.formBlob, styles.formBlobTop]} />
+        <View style={[styles.formBlob, styles.formBlobBottom]} />
         <ScrollView contentContainerStyle={styles.formScroll} keyboardShouldPersistTaps="handled">
           <View style={styles.formCard}>
             <View style={styles.personaToggle}>
@@ -93,14 +155,18 @@ export function AdminAuthPage() {
           </View>
         </ScrollView>
       </View>
+
+      <RoboGuide theme={theme} />
     </View>
   );
 }
 
 function LoginForm({ persona, onSwitchToRegister }: { persona: Persona; onSwitchToRegister?: () => void }) {
   const dispatch = useAppDispatch();
+  const pendingOtp = useAppSelector((s) => s.auth.pendingOtp);
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [code, setCode] = useState('');
 
   const {
     control,
@@ -115,9 +181,8 @@ function LoginForm({ persona, onSwitchToRegister }: { persona: Persona; onSwitch
     setSubmitting(true);
     try {
       // The selected persona tab is enforced against the account's actual role
-      // in mockServer.login(), so logging in from the wrong tab fails clearly.
-      await dispatch(login({ ...values, expectedRole: persona })).unwrap();
-      showSuccessToast('Welcome back!', 'Logged in successfully.');
+      // in mockServer.requestLoginOtp(), so logging in from the wrong tab fails clearly.
+      await dispatch(requestLoginOtp({ ...values, expectedRole: persona })).unwrap();
     } catch (error: any) {
       showErrorToast('Login failed', error || 'Please check your credentials.');
     } finally {
@@ -125,8 +190,23 @@ function LoginForm({ persona, onSwitchToRegister }: { persona: Persona; onSwitch
     }
   };
 
-  const demoCredentials =
-    persona === 'admin' ? ADMIN_CREDENTIALS : persona === 'manager' ? MANAGER_CREDENTIALS : DEMO_CREDENTIALS;
+  const onVerify = async () => {
+    if (!pendingOtp) return;
+    setSubmitting(true);
+    try {
+      await dispatch(verifyLoginOtp({ email: pendingOtp.email, code })).unwrap();
+      showSuccessToast('Welcome back!', 'Logged in successfully.');
+    } catch (error: any) {
+      showErrorToast('Verification failed', error || 'Please check the code and try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const onCancelOtp = () => {
+    dispatch(clearPendingOtp());
+    setCode('');
+  };
 
   const subtitle: Record<Persona, string> = {
     admin: 'Manage employees, policies, attendance, and organizational settings.',
@@ -134,9 +214,44 @@ function LoginForm({ persona, onSwitchToRegister }: { persona: Persona; onSwitch
     manager: 'Review team attendance, manage leave requests, and monitor availability.',
   };
 
+  if (pendingOtp) {
+    return (
+      <>
+        <Text style={styles.heading}>Enter verification code</Text>
+        <Text style={styles.subheading}>We've sent a 6-digit code for {pendingOtp.email}.</Text>
+
+        <View style={styles.hintBox}>
+          <MaterialCommunityIcons name="information-outline" size={16} color={theme.colors.primary} />
+          <Text style={styles.hintText}>
+            This demo has no real email/SMS service connected, so here's your code: {pendingOtp.devCode}
+          </Text>
+        </View>
+
+        <InputField label="Verification code" value={code} onChangeText={setCode} placeholder="123456" keyboardType="number-pad" />
+
+        <AppButton
+          label="Verify & Sign In"
+          onPress={onVerify}
+          loading={submitting}
+          disabled={code.trim().length < 6}
+          size="lg"
+          style={{ ...styles.submitButton, backgroundColor: vivid.blue }}
+        />
+
+        <Pressable onPress={onCancelOtp} style={styles.switchLink} accessibilityRole="button">
+          <Text style={styles.switchLinkText}>
+            Wrong account? <Text style={styles.switchLinkTextBold}>Go back</Text>
+          </Text>
+        </Pressable>
+      </>
+    );
+  }
+
   return (
     <>
-      <Text style={styles.heading}>{PERSONA_META[persona].label} sign in</Text>
+      <Text style={styles.heading}>
+        <Text style={styles.headingAccent}>{PERSONA_META[persona].label}</Text> sign in
+      </Text>
       <Text style={styles.subheading}>{subtitle[persona]}</Text>
 
       <Controller
@@ -181,13 +296,21 @@ function LoginForm({ persona, onSwitchToRegister }: { persona: Persona; onSwitch
           />
         )}
       />
+      <Text style={styles.passwordRules}>Use at least 8 characters.</Text>
 
-      <AppButton label="Log In" onPress={handleSubmit(onSubmit)} loading={submitting} size="lg" style={styles.submitButton} />
+      <AppButton
+        label="Log In"
+        onPress={handleSubmit(onSubmit)}
+        loading={submitting}
+        size="lg"
+        style={{ ...styles.submitButton, backgroundColor: vivid.blue }}
+      />
 
       <View style={styles.hintBox}>
         <MaterialCommunityIcons name="information-outline" size={16} color={theme.colors.primary} />
         <Text style={styles.hintText}>
-          Demo login: {demoCredentials.email} / {demoCredentials.password}
+          Demo {PERSONA_META[persona].label.toLowerCase()} login: {PERSONA_CREDENTIALS[persona].email} /{' '}
+          {PERSONA_CREDENTIALS[persona].password}
         </Text>
       </View>
 
@@ -380,7 +503,9 @@ function RegisterForm({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
               />
             )}
           />
+          <Text style={styles.passwordRules}>Use at least 8 characters.</Text>
         </View>
+
         <View style={styles.fieldHalf}>
           <Controller
             control={control}
@@ -415,7 +540,7 @@ function RegisterForm({ onSwitchToLogin }: { onSwitchToLogin: () => void }) {
         onPress={handleSubmit(onSubmit)}
         loading={submitting}
         size="lg"
-        style={styles.submitButton}
+        style={{ ...styles.submitButton, backgroundColor: vivid.blue }}
       />
 
       <Pressable onPress={onSwitchToLogin} style={styles.switchLink} accessibilityRole="button">
@@ -440,14 +565,47 @@ const styles = StyleSheet.create({
     backgroundColor: theme.colors.primary,
     padding: theme.spacing.xxl,
     justifyContent: 'center',
+    overflow: 'hidden',
+    position: 'relative',
   },
-  brandIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: theme.radius.md,
-    backgroundColor: 'rgba(255,255,255,0.15)',
+  // Just enough neutral darkening to keep the white text readable now that
+  // the color gradient on top of it is mostly transparent (video-forward).
+  videoScrim: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(10, 14, 30, 0.28)',
+  },
+  blob: {
+    position: 'absolute',
+    borderRadius: 999,
+    backgroundColor: '#FFFFFF',
+  },
+  blobTop: {
+    width: 260,
+    height: 260,
+    top: -100,
+    right: -100,
+    opacity: 0.1,
+  },
+  blobBottom: {
+    width: 220,
+    height: 220,
+    bottom: -80,
+    left: -80,
+    opacity: 0.1,
+  },
+  backLink: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 6,
+    alignSelf: 'flex-start',
+    marginBottom: theme.spacing.lg,
+  },
+  backLinkText: {
+    ...theme.typography.captionMedium,
+    color: theme.colors.onPrimary,
+  },
+  brandLogo: {
+    alignItems: 'flex-start',
     marginBottom: theme.spacing.lg,
   },
   brandTitle: {
@@ -475,6 +633,10 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center',
     justifyContent: 'center',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 3,
   },
   featureText: {
     ...theme.typography.body,
@@ -483,6 +645,29 @@ const styles = StyleSheet.create({
   },
   formPanel: {
     flex: 1.3,
+    backgroundColor: '#EEF2FF',
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  formBlob: {
+    position: 'absolute',
+    borderRadius: 999,
+  },
+  formBlobTop: {
+    width: 300,
+    height: 300,
+    top: -110,
+    right: -90,
+    backgroundColor: vivid.blue,
+    opacity: 0.14,
+  },
+  formBlobBottom: {
+    width: 260,
+    height: 260,
+    bottom: -110,
+    left: -90,
+    backgroundColor: vivid.purple,
+    opacity: 0.12,
   },
   formScroll: {
     flexGrow: 1,
@@ -490,13 +675,25 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: theme.spacing.xl,
   },
+  // Frosted-glass card: translucent white + backdrop blur so the panel's
+  // colored blobs show through softly behind the form.
   formCard: {
     width: '100%',
     maxWidth: 460,
-  },
+    backgroundColor: 'rgba(255,255,255,0.62)',
+    borderRadius: theme.radius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.7)',
+    padding: theme.spacing.xl,
+    backdropFilter: 'blur(24px)',
+    WebkitBackdropFilter: 'blur(24px)',
+    ...theme.elevation.lg,
+  } as any,
   personaToggle: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.7)',
     borderRadius: theme.radius.md,
     padding: 4,
     marginBottom: theme.spacing.xl,
@@ -523,11 +720,14 @@ const styles = StyleSheet.create({
   },
   heading: {
     ...theme.typography.h2,
-    color: theme.colors.textPrimary,
+    color: '#16305C',
+  },
+  headingAccent: {
+    color: vivid.blue,
   },
   subheading: {
     ...theme.typography.body,
-    color: theme.colors.textSecondary,
+    color: '#5B7295',
     marginBottom: theme.spacing.lg,
     marginTop: 4,
   },
@@ -540,6 +740,12 @@ const styles = StyleSheet.create({
   },
   submitButton: {
     marginTop: theme.spacing.sm,
+  },
+  passwordRules: {
+    ...theme.typography.caption,
+    color: theme.colors.textMuted,
+    marginTop: 6,
+    marginBottom: theme.spacing.sm,
   },
   hintBox: {
     flexDirection: 'row',

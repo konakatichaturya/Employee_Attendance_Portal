@@ -43,7 +43,9 @@
         {
           "cameraPermission": "WorkTrack needs access to your camera to scan the office QR code for check-in/check-out."
         }
-      ]
+      ],
+      "expo-font",
+      "expo-video"
     ]
   }
 }

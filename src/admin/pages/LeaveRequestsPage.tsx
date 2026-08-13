@@ -4,6 +4,7 @@ import { format, parseISO } from 'date-fns';
 import { AdminCard as Card } from '../components/AdminCard';
 import { AdminLoader as Loader } from '../components/AdminLoader';
 import { AdminEmptyState as EmptyState } from '../components/AdminEmptyState';
+import { DashboardHero } from '../components/DashboardHero';
 import { useWebTheme, type WebTheme } from '../ThemeContext';
 import { useAdminLeaveRequests } from '../hooks/useAdminData';
 import type { LeaveStatus } from '../../types';
@@ -26,11 +27,12 @@ export function LeaveRequestsPage() {
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>Leave Requests</Text>
-      <Text style={styles.subheading}>
-        Read-only view of every leave request across the company. Approval happens through each employee's
-        manager — admin does not action requests directly.
-      </Text>
+      <DashboardHero
+        theme={theme}
+        title="Leave Requests"
+        subtitle="Read-only view of every leave request across the company — approval happens through each employee's manager."
+        videoSrc="/videos/hero-leave.mp4"
+      />
 
       {requests.length === 0 ? (
         <EmptyState

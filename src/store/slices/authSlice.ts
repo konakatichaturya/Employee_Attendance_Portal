@@ -7,34 +7,47 @@ const initialState: AuthState = {
   employee: null,
   token: null,
   status: 'idle',
+  pendingOtp: null,
 };
 
+// Every app launch/refresh must land on the login screen — sessions are never
+// silently restored, even if a valid token is still stored from a prior run.
 export const bootstrapAuth = createAsyncThunk<{ token: string; employee: Employee } | null>(
   'auth/bootstrap',
   async () => {
-    const token = await secureStorage.getToken();
-    if (!token) return null;
-    try {
-      const employee = await authApi.getSessionEmployee(token);
-      return { token, employee };
-    } catch {
-      await secureStorage.clearToken();
-      return null;
-    }
+    await secureStorage.clearToken();
+    return null;
   },
 );
 
-export const login = createAsyncThunk<
-  { token: string; employee: Employee },
+// Step 1 of login: validates credentials and issues a one-time code. This app
+// has no real email/SMS provider connected, so the code comes back in the
+// response (`devCode`) instead of actually being delivered — the UI shows it
+// directly, the same way the existing "Demo login" hint already works.
+export const requestLoginOtp = createAsyncThunk<
+  { email: string; role: Employee['role']; devCode: string },
   { email: string; password: string; expectedRole?: Employee['role'] },
   { rejectValue: string }
->('auth/login', async ({ email, password, expectedRole }, { rejectWithValue }) => {
+>('auth/requestLoginOtp', async ({ email, password, expectedRole }, { rejectWithValue }) => {
   try {
-    const result = await authApi.login(email, password, expectedRole);
+    return await authApi.requestLoginOtp(email, password, expectedRole);
+  } catch (error: any) {
+    return rejectWithValue(error?.message ?? 'Could not send a verification code. Please try again.');
+  }
+});
+
+// Step 2 of login: exchanges the code for a real session.
+export const verifyLoginOtp = createAsyncThunk<
+  { token: string; employee: Employee },
+  { email: string; code: string },
+  { rejectValue: string }
+>('auth/verifyLoginOtp', async ({ email, code }, { rejectWithValue }) => {
+  try {
+    const result = await authApi.verifyLoginOtp(email, code);
     await secureStorage.setToken(result.token);
     return result;
   } catch (error: any) {
-    return rejectWithValue(error?.message ?? 'Login failed. Please try again.');
+    return rejectWithValue(error?.message ?? 'That code is invalid or has expired.');
   }
 });
 
@@ -83,6 +96,9 @@ const authSlice = createSlice({
       state.token = null;
       state.status = 'unauthenticated';
     },
+    clearPendingOtp(state) {
+      state.pendingOtp = null;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -101,15 +117,19 @@ const authSlice = createSlice({
       .addCase(bootstrapAuth.rejected, (state) => {
         state.status = 'unauthenticated';
       })
-      .addCase(login.pending, (state) => {
+      .addCase(requestLoginOtp.fulfilled, (state, action) => {
+        state.pendingOtp = action.payload;
+      })
+      .addCase(verifyLoginOtp.pending, (state) => {
         state.status = 'checking';
       })
-      .addCase(login.fulfilled, (state, action) => {
+      .addCase(verifyLoginOtp.fulfilled, (state, action) => {
         state.token = action.payload.token;
         state.employee = action.payload.employee;
         state.status = 'authenticated';
+        state.pendingOtp = null;
       })
-      .addCase(login.rejected, (state) => {
+      .addCase(verifyLoginOtp.rejected, (state) => {
         state.status = 'unauthenticated';
       })
       .addCase(register.pending, (state) => {
@@ -127,9 +147,10 @@ const authSlice = createSlice({
         state.token = null;
         state.employee = null;
         state.status = 'unauthenticated';
+        state.pendingOtp = null;
       });
   },
 });
 
-export const { updateEmployee, forceUnauthenticated } = authSlice.actions;
+export const { updateEmployee, forceUnauthenticated, clearPendingOtp } = authSlice.actions;
 export default authSlice.reducer;

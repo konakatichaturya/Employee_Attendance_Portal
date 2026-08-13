@@ -2,11 +2,14 @@ import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { format, parseISO } from 'date-fns';
 import { Screen } from '../../components/Screen';
-import { Card } from '../../components/Card';
+import { GlassCard } from '../../components/GlassCard';
 import { Loader } from '../../components/Loader';
 import { EmptyState } from '../../components/EmptyState';
+import { VideoHero } from '../../components/VideoHero';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { useTheme, type Theme } from '../../theme/ThemeContext';
 import { useAdminLeaveRequests } from '../../admin/hooks/useAdminData';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
 import type { LeaveStatus } from '../../types';
 
 export function AdminLeaveScreen() {
@@ -25,11 +28,16 @@ export function AdminLeaveScreen() {
 
   return (
     <Screen edges={['top', 'left', 'right']}>
+      <GradientBlobBackdrop />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>Leave Requests</Text>
-        <Text style={styles.subheading}>
-          Read-only view across the company. Approval flows through each employee's manager.
-        </Text>
+        <VideoHero
+          theme={theme}
+          title="Leave Requests"
+          subtitle="Read-only — approval flows through each employee's manager"
+          videoSrc={NATIVE_VIDEO.leave}
+          height={120}
+        />
+        <View style={styles.heroSpacer} />
 
         {requestsQuery.isLoading ? (
           <Loader label="Loading leave requests..." />
@@ -40,7 +48,7 @@ export function AdminLeaveScreen() {
             const meta = STATUS_META[req.status];
             const awaiting = req.status === 'Pending' ? 'Manager' : '—';
             return (
-              <Card key={req.id} style={styles.card}>
+              <GlassCard key={req.id} style={styles.card}>
                 <View style={styles.headerRow}>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.name}>{req.employeeName}</Text>
@@ -54,7 +62,7 @@ export function AdminLeaveScreen() {
                   </View>
                 </View>
                 {awaiting !== '—' && <Text style={styles.awaiting}>Awaiting: {awaiting}</Text>}
-              </Card>
+              </GlassCard>
             );
           })
         )}
@@ -69,9 +77,8 @@ function createStyles(theme: Theme) {
     padding: theme.spacing.md,
     paddingBottom: theme.spacing.xxl,
   },
-  heading: {
-    ...theme.typography.h2,
-    color: theme.colors.textPrimary,
+  heroSpacer: {
+    height: theme.spacing.md,
   },
   subheading: {
     ...theme.typography.body,

@@ -1,6 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Image,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -17,13 +16,17 @@ import { useNavigation } from '@react-navigation/native';
 import { Screen } from '../../components/Screen';
 import { InputField } from '../../components/InputField';
 import { AppButton } from '../../components/AppButton';
-import { useTheme, type Theme } from '../../theme/ThemeContext';
-import { useAppDispatch } from '../../store/hooks';
-import { login } from '../../store/slices/authSlice';
+import { VideoHero } from '../../components/VideoHero';
+import { GlassCard } from '../../components/GlassCard';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
+import { theme } from '../../theme';
+import { useAppDispatch, useAppSelector } from '../../store/hooks';
+import { clearPendingOtp, requestLoginOtp, verifyLoginOtp } from '../../store/slices/authSlice';
 import { loginSchema, type LoginFormValues } from './schema';
 import { showErrorToast, showSuccessToast } from '../../components/toast';
 import { ADMIN_CREDENTIALS, DEMO_CREDENTIALS, MANAGER_CREDENTIALS } from '../../services/mock/seed';
-import { AuthHeader } from './AuthHeader';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
+import { vivid } from '../../marketing/vividPalette';
 import type { UserRole } from '../../types';
 import type { AuthStackParamList } from '../../navigation/types';
 
@@ -41,14 +44,20 @@ const SUBTITLE: Record<Persona, string> = {
   manager: 'Review team attendance, manage leave requests, and monitor availability.',
 };
 
+const PERSONA_CREDENTIALS: Record<Persona, { email: string; password: string }> = {
+  admin: ADMIN_CREDENTIALS,
+  employee: DEMO_CREDENTIALS,
+  manager: MANAGER_CREDENTIALS,
+};
+
 export function LoginScreen() {
-  const { theme } = useTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
   const dispatch = useAppDispatch();
   const navigation = useNavigation<NativeStackNavigationProp<AuthStackParamList>>();
+  const pendingOtp = useAppSelector((s) => s.auth.pendingOtp);
   const [persona, setPersona] = useState<Persona>('employee');
   const [submitting, setSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [code, setCode] = useState('');
 
   const {
     control,
@@ -62,10 +71,7 @@ export function LoginScreen() {
   const onSubmit = async (values: LoginFormValues) => {
     setSubmitting(true);
     try {
-      // The selected persona tab is enforced against the account's actual role
-      // in mockServer.login(), so logging in from the wrong tab fails clearly.
-      await dispatch(login({ ...values, expectedRole: persona })).unwrap();
-      showSuccessToast('Welcome back!', 'Logged in successfully.');
+      await dispatch(requestLoginOtp({ ...values, expectedRole: persona })).unwrap();
     } catch (error: any) {
       showErrorToast('Login failed', error ?? 'Please check your credentials.');
     } finally {
@@ -73,102 +79,130 @@ export function LoginScreen() {
     }
   };
 
-  const demoCredentials =
-    persona === 'admin' ? ADMIN_CREDENTIALS : persona === 'manager' ? MANAGER_CREDENTIALS : DEMO_CREDENTIALS;
+  const onVerify = async () => {
+    if (!pendingOtp) return;
+    setSubmitting(true);
+    try {
+      await dispatch(verifyLoginOtp({ email: pendingOtp.email, code })).unwrap();
+      showSuccessToast('Welcome back!', 'Logged in successfully.');
+    } catch (error: any) {
+      showErrorToast('Verification failed', error ?? 'Please check the code and try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const onCancelOtp = () => {
+    dispatch(clearPendingOtp());
+    setCode('');
+  };
 
   return (
     <Screen edges={['top', 'left', 'right', 'bottom']}>
+      <GradientBlobBackdrop />
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-          <AuthHeader icon="calendar-check" tagline="Attendance & Leave, simplified" />
+          <VideoHero
+            theme={theme}
+            title="WorkTrack"
+            subtitle="Attendance & Leave, simplified"
+            videoSrc={NATIVE_VIDEO.leave}
+            height={140}
+          />
+          <View style={styles.bannerSpacer} />
 
-          <View style={styles.personaToggle}>
-            {(Object.keys(PERSONA_META) as Persona[]).map((key) => (
-              <Pressable
-                key={key}
-                onPress={() => setPersona(key)}
-                style={[styles.personaSegment, persona === key && styles.personaSegmentActive]}
-                accessibilityRole="button"
-                accessibilityState={{ selected: persona === key }}
-              >
-                <MaterialCommunityIcons
-                  name={PERSONA_META[key].icon}
-                  size={15}
-                  color={persona === key ? theme.colors.primary : theme.colors.textMuted}
-                />
-                <Text style={[styles.personaSegmentText, persona === key && styles.personaSegmentTextActive]}>
-                  {PERSONA_META[key].label}
-                </Text>
-              </Pressable>
-            ))}
-          </View>
-
-          <View style={styles.form}>
-            <Text style={styles.heading}>{PERSONA_META[persona].label} sign in</Text>
-            <Text style={styles.subheading}>{SUBTITLE[persona]}</Text>
-
-            <Controller
-              control={control}
-              name="email"
-              render={({ field: { value, onChange, onBlur } }) => (
-                <InputField
-                  label="Email"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  placeholder="you@company.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  error={errors.email?.message}
-                />
-              )}
-            />
-
-            <Controller
-              control={control}
-              name="password"
-              render={({ field: { value, onChange, onBlur } }) => (
-                <InputField
-                  label="Password"
-                  value={value}
-                  onChangeText={onChange}
-                  onBlur={onBlur}
-                  placeholder="Enter your password"
-                  secureTextEntry={!showPassword}
-                  autoCapitalize="none"
-                  error={errors.password?.message}
-                  rightElement={
-                    <MaterialCommunityIcons
-                      name={showPassword ? 'eye-off' : 'eye'}
-                      size={20}
-                      color={theme.colors.textMuted}
-                      onPress={() => setShowPassword((s) => !s)}
-                      suppressHighlighting
-                    />
-                  }
-                />
-              )}
-            />
-
-            <AppButton
-              label="Log In"
-              onPress={handleSubmit(onSubmit)}
-              loading={submitting}
-              size="lg"
-              style={styles.submitButton}
-            />
-
-            <View style={styles.hintBox}>
-              <MaterialCommunityIcons name="information-outline" size={16} color={theme.colors.primary} />
-              <Text style={styles.hintText}>
-                Demo login: {demoCredentials.email} / {demoCredentials.password}
-              </Text>
+          {!pendingOtp && (
+            <View style={styles.personaToggle}>
+              {(Object.keys(PERSONA_META) as Persona[]).map((key) => (
+                <Pressable
+                  key={key}
+                  onPress={() => setPersona(key)}
+                  style={[styles.personaSegment, persona === key && styles.personaSegmentActive]}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: persona === key }}
+                >
+                  <MaterialCommunityIcons
+                    name={PERSONA_META[key].icon}
+                    size={15}
+                    color={persona === key ? vivid.blue : theme.colors.textMuted}
+                  />
+                  <Text style={[styles.personaSegmentText, persona === key && styles.personaSegmentTextActive]}>
+                    {PERSONA_META[key].label}
+                  </Text>
+                </Pressable>
+              ))}
             </View>
+          )}
 
-            {persona === 'employee' && (
+          {!pendingOtp ? (
+            <GlassCard style={styles.form}>
+              <Text style={styles.heading}>
+                <Text style={styles.headingAccent}>{PERSONA_META[persona].label}</Text> sign in
+              </Text>
+              <Text style={styles.subheading}>{SUBTITLE[persona]}</Text>
+
+              <Controller
+                control={control}
+                name="email"
+                render={({ field: { value, onChange, onBlur } }) => (
+                  <InputField
+                    label="Email"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    placeholder="you@company.com"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    error={errors.email?.message}
+                  />
+                )}
+              />
+
+              <Controller
+                control={control}
+                name="password"
+                render={({ field: { value, onChange, onBlur } }) => (
+                  <InputField
+                    label="Password"
+                    value={value}
+                    onChangeText={onChange}
+                    onBlur={onBlur}
+                    placeholder="Enter your password"
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                    error={errors.password?.message}
+                    rightElement={
+                      <MaterialCommunityIcons
+                        name={showPassword ? 'eye-off' : 'eye'}
+                        size={20}
+                        color={theme.colors.textMuted}
+                        onPress={() => setShowPassword((s) => !s)}
+                        suppressHighlighting
+                      />
+                    }
+                  />
+                )}
+              />
+
+              <AppButton
+                label="Log In"
+                onPress={handleSubmit(onSubmit)}
+                loading={submitting}
+                size="lg"
+                style={styles.submitButton}
+              />
+
+              <View style={styles.hintBox}>
+                <MaterialCommunityIcons name="information-outline" size={16} color={vivid.blue} />
+                <Text style={styles.hintText}>
+                  Demo {PERSONA_META[persona].label.toLowerCase()} login: {PERSONA_CREDENTIALS[persona].email} /{' '}
+                  {PERSONA_CREDENTIALS[persona].password}
+                </Text>
+              </View>
+
               <Pressable
                 onPress={() => navigation.navigate('Register')}
                 style={styles.registerLink}
@@ -178,26 +212,65 @@ export function LoginScreen() {
                   New here? <Text style={styles.registerLinkTextBold}>Create an account</Text>
                 </Text>
               </Pressable>
-            )}
-          </View>
+            </GlassCard>
+          ) : (
+            <GlassCard style={styles.form}>
+              <Text style={styles.heading}>Enter verification code</Text>
+              <Text style={styles.subheading}>We've sent a 6-digit code for {pendingOtp.email}.</Text>
+
+              <View style={styles.hintBox}>
+                <MaterialCommunityIcons name="information-outline" size={16} color={vivid.blue} />
+                <Text style={styles.hintText}>
+                  This demo has no real email/SMS service connected, so here's your code: {pendingOtp.devCode}
+                </Text>
+              </View>
+
+              <InputField
+                label="Verification code"
+                value={code}
+                onChangeText={setCode}
+                placeholder="123456"
+                keyboardType="number-pad"
+              />
+
+              <AppButton
+                label="Verify & Sign In"
+                onPress={onVerify}
+                loading={submitting}
+                disabled={code.trim().length < 6}
+                size="lg"
+                style={styles.submitButton}
+              />
+
+              <Pressable onPress={onCancelOtp} style={styles.registerLink} accessibilityRole="button">
+                <Text style={styles.registerLinkText}>
+                  Wrong account? <Text style={styles.registerLinkTextBold}>Go back</Text>
+                </Text>
+              </Pressable>
+            </GlassCard>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
     </Screen>
   );
 }
 
-function createStyles(theme: Theme) {
-  return StyleSheet.create({
+const styles = StyleSheet.create({
   flex: { flex: 1 },
   scrollContent: {
     flexGrow: 1,
     padding: theme.spacing.lg,
     justifyContent: 'center',
   },
+  bannerSpacer: {
+    height: theme.spacing.lg,
+  },
   personaToggle: {
     flexDirection: 'row',
-    backgroundColor: theme.colors.surfaceAlt,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderRadius: theme.radius.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
     padding: 4,
     marginBottom: theme.spacing.lg,
   },
@@ -220,7 +293,7 @@ function createStyles(theme: Theme) {
     fontWeight: '600',
   },
   personaSegmentTextActive: {
-    color: theme.colors.primary,
+    color: vivid.blue,
   },
   form: {
     width: '100%',
@@ -228,6 +301,9 @@ function createStyles(theme: Theme) {
   heading: {
     ...theme.typography.h2,
     color: theme.colors.textPrimary,
+  },
+  headingAccent: {
+    color: vivid.blue,
   },
   subheading: {
     ...theme.typography.body,
@@ -237,6 +313,8 @@ function createStyles(theme: Theme) {
   },
   submitButton: {
     marginTop: theme.spacing.sm,
+    backgroundColor: vivid.blue,
+    borderRadius: theme.radius.pill,
   },
   hintBox: {
     flexDirection: 'row',
@@ -261,8 +339,7 @@ function createStyles(theme: Theme) {
     color: theme.colors.textSecondary,
   },
   registerLinkTextBold: {
-    color: theme.colors.primary,
+    color: vivid.blue,
     fontWeight: '700',
   },
-  });
-}
+});

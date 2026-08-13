@@ -6,11 +6,13 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { format } from 'date-fns';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Screen } from '../../components/Screen';
-import { Card } from '../../components/Card';
+import { GlassCard } from '../../components/GlassCard';
 import { InputField } from '../../components/InputField';
 import { DateField } from '../../components/DateField';
 import { AppButton } from '../../components/AppButton';
 import { ConfirmModal } from '../../components/ConfirmModal';
+import { VideoHero } from '../../components/VideoHero';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { useTheme, type Theme } from '../../theme/ThemeContext';
 import { useLeaveBalances } from '../../hooks/useLeaveQueries';
 import { useApplyLeave } from '../../hooks/useLeaveQueries';
@@ -19,6 +21,7 @@ import { applyLeaveSchema, calculateLeaveDays, type ApplyLeaveFormValues } from 
 import { LeaveTypeSelector } from './components/LeaveTypeSelector';
 import { LeaveBalanceSummary } from '../dashboard/components/LeaveBalanceSummary';
 import { showErrorToast, showSuccessToast } from '../../components/toast';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
 
 export function ApplyLeaveScreen() {
   const { theme } = useTheme();
@@ -87,15 +90,22 @@ export function ApplyLeaveScreen() {
 
   return (
     <Screen>
+      <GradientBlobBackdrop />
       <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-        <Text style={styles.heading}>Apply for Leave</Text>
-        <Text style={styles.subheading}>Fill in the details below to request time off.</Text>
+        <VideoHero
+          theme={theme}
+          title="Apply for Leave"
+          subtitle="Fill in the details below to request time off"
+          videoSrc={NATIVE_VIDEO.leave}
+          height={120}
+        />
+        <View style={styles.heroSpacer} />
 
         <View style={styles.card}>
           <LeaveBalanceSummary balances={balancesQuery.data ?? []} />
         </View>
 
-        <Card style={styles.card}>
+        <GlassCard style={styles.card}>
           <Controller
             control={control}
             name="type"
@@ -190,7 +200,7 @@ export function ApplyLeaveScreen() {
               )}
             </View>
           )}
-        </Card>
+        </GlassCard>
 
         <AppButton label="Submit Request" onPress={onSubmitPress} size="lg" style={styles.submitButton} />
       </ScrollView>
@@ -228,15 +238,8 @@ function createStyles(theme: Theme) {
       ...theme.typography.captionMedium,
       color: theme.colors.primary,
     },
-    heading: {
-      ...theme.typography.h2,
-      color: theme.colors.textPrimary,
-    },
-    subheading: {
-      ...theme.typography.body,
-      color: theme.colors.textSecondary,
-      marginBottom: theme.spacing.md,
-      marginTop: 2,
+    heroSpacer: {
+      height: theme.spacing.md,
     },
     card: {
       marginBottom: theme.spacing.md,

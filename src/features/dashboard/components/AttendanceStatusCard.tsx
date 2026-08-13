@@ -2,8 +2,9 @@ import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { format, parseISO } from 'date-fns';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Card } from '../../../components/Card';
+import { GlassCard } from '../../../components/GlassCard';
 import { AppButton } from '../../../components/AppButton';
+import { TimeBadge } from '../../../components/TimeBadge';
 import { LocationMapPreview } from './LocationMapPreview';
 import { HourTimelineBar } from './HourTimelineBar';
 import { useTheme, type Theme } from '../../../theme/ThemeContext';
@@ -44,7 +45,7 @@ export function AttendanceStatusCard({ record, onCheckIn, onCheckOut, loading }:
   const checkOutDate = record?.checkOutTime ? parseISO(record.checkOutTime) : null;
 
   return (
-    <Card>
+    <GlassCard>
       <Text style={styles.dateText}>{format(now, 'EEE, dd MMM').toUpperCase()}</Text>
 
       {record?.pendingSync && (
@@ -55,24 +56,27 @@ export function AttendanceStatusCard({ record, onCheckIn, onCheckOut, loading }:
       )}
 
       {!hasCheckedIn && (
-        <>
-          <Text style={styles.heroTime}>{format(now, 'h:mm a')}</Text>
+        <View style={styles.heroWrapper}>
+          <TimeBadge theme={theme} mainText={format(now, 'h:mm')} unit={format(now, 'a')} />
           <Text style={[styles.heroStatus, { color: punctualityLabel(now, theme).color }]}>
             {punctualityLabel(now, theme).label}
           </Text>
-        </>
+        </View>
       )}
 
       {hasCheckedIn && (
-        <>
-          <Text style={[styles.heroTime, styles.heroTimeGreen]}>
-            {elapsedHoursLabel(checkInDate!, checkOutDate ?? now)} <Text style={styles.heroUnit}>HRS</Text>
-          </Text>
+        <View style={styles.heroWrapper}>
+          <TimeBadge
+            theme={theme}
+            mainText={elapsedHoursLabel(checkInDate!, checkOutDate ?? now)}
+            unit="HRS"
+            tone="success"
+          />
           <Text style={styles.heroCaption}>
             {hasCheckedOut ? 'Checked out at' : 'Since first in at'}{' '}
             {format(hasCheckedOut ? checkOutDate! : checkInDate!, 'h:mm a')}
           </Text>
-        </>
+        </View>
       )}
 
       <View style={styles.timelineWrapper}>
@@ -92,11 +96,17 @@ export function AttendanceStatusCard({ record, onCheckIn, onCheckOut, loading }:
         </Text>
       </View>
 
-      {(record?.checkOutLocation || record?.checkInLocation) && (
-        <LocationMapPreview
-          location={record.checkOutLocation ?? record.checkInLocation!}
-          label={record.checkOutLocation ? 'Check-out location' : 'Check-in location'}
-        />
+      {!!record?.checkInLocation && (
+        <>
+          <Text style={styles.locationLabel}>Check-in location</Text>
+          <LocationMapPreview location={record.checkInLocation} label="Check-in location" />
+        </>
+      )}
+      {!!record?.checkOutLocation && (
+        <>
+          <Text style={styles.locationLabel}>Check-out location</Text>
+          <LocationMapPreview location={record.checkOutLocation} label="Check-out location" />
+        </>
       )}
 
       {!hasCheckedOut && (
@@ -116,7 +126,7 @@ export function AttendanceStatusCard({ record, onCheckIn, onCheckOut, loading }:
           }
         />
       )}
-    </Card>
+    </GlassCard>
   );
 }
 
@@ -141,28 +151,20 @@ function createStyles(theme: Theme) {
     color: theme.colors.warning,
     flexShrink: 1,
   },
-  heroTime: {
-    fontSize: 34,
-    lineHeight: 40,
-    fontWeight: '700',
-    color: theme.colors.textPrimary,
-  },
-  heroTimeGreen: {
-    color: theme.colors.success,
-  },
-  heroUnit: {
-    fontSize: 16,
-    fontWeight: '600',
+  heroWrapper: {
+    alignItems: 'center',
+    marginBottom: theme.spacing.md,
   },
   heroStatus: {
     ...theme.typography.bodyMedium,
-    marginTop: 2,
-    marginBottom: theme.spacing.md,
+    textAlign: 'center',
+    marginTop: theme.spacing.sm,
   },
   heroCaption: {
     ...theme.typography.caption,
     color: theme.colors.textMuted,
-    marginTop: 2,
+    textAlign: 'center',
+    marginTop: theme.spacing.sm,
     marginBottom: theme.spacing.md,
   },
   timelineWrapper: {
@@ -178,6 +180,11 @@ function createStyles(theme: Theme) {
     ...theme.typography.caption,
     color: theme.colors.textSecondary,
     flexShrink: 1,
+  },
+  locationLabel: {
+    ...theme.typography.captionMedium,
+    color: theme.colors.textMuted,
+    marginBottom: 4,
   },
   shiftLabel: {
     color: theme.colors.textMuted,

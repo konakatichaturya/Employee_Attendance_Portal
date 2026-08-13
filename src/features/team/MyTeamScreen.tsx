@@ -1,12 +1,15 @@
 import React, { useMemo } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { Screen } from '../../components/Screen';
-import { Card } from '../../components/Card';
+import { GlassCard } from '../../components/GlassCard';
 import { Loader } from '../../components/Loader';
 import { EmptyState } from '../../components/EmptyState';
+import { VideoHero } from '../../components/VideoHero';
+import { GradientBlobBackdrop } from '../../components/GradientBlobBackdrop';
 import { useTheme, type Theme } from '../../theme/ThemeContext';
 import { useMyTeam } from '../../admin/hooks/useTeam';
 import { getInitials } from '../../utils/getInitials';
+import { NATIVE_VIDEO } from '../../constants/nativeMedia';
 
 export function MyTeamScreen() {
   const { theme } = useTheme();
@@ -16,9 +19,10 @@ export function MyTeamScreen() {
 
   return (
     <Screen edges={['top', 'left', 'right']}>
+      <GradientBlobBackdrop />
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.heading}>My Team</Text>
-        <Text style={styles.subheading}>Employees who report to you</Text>
+        <VideoHero theme={theme} title="My Team" subtitle="Employees who report to you" videoSrc={NATIVE_VIDEO.calendar} height={120} />
+        <View style={styles.heroSpacer} />
 
         {teamQuery.isLoading ? (
           <Loader label="Loading your team..." />
@@ -29,7 +33,7 @@ export function MyTeamScreen() {
             message="Employees will appear here once they register and pick you as their team lead."
           />
         ) : (
-          <Card padded={false}>
+          <GlassCard padded={false}>
             {team.map((member, index) => (
               <View key={member.id} style={[styles.row, index === team.length - 1 && styles.rowLast]}>
                 <View style={styles.avatar}>
@@ -43,7 +47,7 @@ export function MyTeamScreen() {
                 </View>
               </View>
             ))}
-          </Card>
+          </GlassCard>
         )}
       </ScrollView>
     </Screen>
@@ -56,9 +60,8 @@ function createStyles(theme: Theme) {
       padding: theme.spacing.md,
       paddingBottom: theme.spacing.xxl,
     },
-    heading: {
-      ...theme.typography.h2,
-      color: theme.colors.textPrimary,
+    heroSpacer: {
+      height: theme.spacing.md,
     },
     subheading: {
       ...theme.typography.body,

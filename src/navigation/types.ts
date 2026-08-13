@@ -19,8 +19,10 @@ export type MainTabParamList = {
   DashboardTab: NavigatorScreenParams<DashboardStackParamList>;
   HistoryTab: undefined;
   LeaveTab: NavigatorScreenParams<LeaveStackParamList>;
+  CalendarTab: undefined;
   ApprovalsTab: undefined;
   TeamTab: undefined;
+  PayslipsTab: undefined;
   ProfileTab: undefined;
 };
 
@@ -31,6 +33,8 @@ export type AdminTabParamList = {
   AdminAttendanceTab: undefined;
   HistoryTab: undefined;
   AdminMyLeaveTab: NavigatorScreenParams<LeaveStackParamList>;
+  CalendarTab: undefined;
+  PayslipsTab: undefined;
   ProfileTab: undefined;
 };
 

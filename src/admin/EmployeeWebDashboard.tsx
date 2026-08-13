@@ -5,16 +5,20 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { format, isWithinInterval, parseISO, startOfDay, subDays } from 'date-fns';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import { useWebTheme, type WebTheme } from './ThemeContext';
+import { useWebTheme, type WebTheme, type WebThemeMode } from './ThemeContext';
 import { AdminCard as Card } from './components/AdminCard';
 import { AdminLoader as Loader } from './components/AdminLoader';
 import { AdminEmptyState as EmptyState } from './components/AdminEmptyState';
 import { AdminConfirmModal } from './components/AdminConfirmModal';
 import { AdminSidebar, type SidebarItem } from './components/AdminSidebar';
+import { CalendarDrawer } from './components/CalendarDrawer';
+import { DashboardBackdrop } from './components/DashboardBackdrop';
+import { DashboardHero } from './components/DashboardHero';
 import { KpiTileRow } from './components/KpiTileRow';
 import { AppButton } from '../components/AppButton';
 import { InputField } from '../components/InputField';
 import { DateField } from '../components/DateField';
+import { TimeBadge } from '../components/TimeBadge';
 import { HistoryFilterBar } from '../features/history/components/HistoryFilterBar';
 import { LeaveTypeSelector } from '../features/leave/components/LeaveTypeSelector';
 import { LeaveUsageChart } from '../features/leave/components/LeaveUsageChart';
@@ -28,32 +32,54 @@ import { useApplyLeave, useLeaveBalances, useLeaveRequests } from '../hooks/useL
 import { useApprovalRecommendation, useImproveLeaveReason } from '../hooks/useAskAi';
 import { useMyTeam } from './hooks/useTeam';
 import { LeaveAssistantChat } from '../features/ai/LeaveAssistantChat';
+import { PayslipsSection } from '../features/payroll/PayslipsSection';
 import { useUpdateProfile } from '../hooks/useProfile';
 import { useReverseGeocode } from '../hooks/useReverseGeocode';
+import { useManagers } from './hooks/useAdminData';
 import { useDecideAsManager, usePendingApprovalsForManager } from './hooks/useApprovals';
 import { showErrorToast, showSuccessToast } from '../components/toast';
 import { LocationPermissionDeniedError } from '../services/location/locationService';
 import type { AttendanceRecord, Employee, HistoryFilter, LeaveRequest, LeaveStatus } from '../types';
 
-type EmployeeSection = 'overview' | 'attendance' | 'leave' | 'approvals' | 'team' | 'history' | 'profile';
+type EmployeeSection =
+  | 'overview'
+  | 'attendance'
+  | 'leave'
+  | 'calendar'
+  | 'approvals'
+  | 'team'
+  | 'history'
+  | 'payslips'
+  | 'profile';
 
 export function EmployeeWebDashboard() {
-  const { theme } = useWebTheme();
-  const styles = useMemo(() => createStyles(theme), [theme]);
+  const { theme, mode } = useWebTheme();
+  const styles = useMemo(() => createStyles(theme, mode), [theme, mode]);
   const dispatch = useAppDispatch();
   const employee = useAppSelector((s) => s.auth.employee);
   const isManager = employee?.role === 'manager';
   const [section, setSection] = useState<EmployeeSection>('overview');
+  const [calendarOpen, setCalendarOpen] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
+
+  const handleSectionChange = (key: EmployeeSection) => {
+    if (key === 'calendar') {
+      setCalendarOpen(true);
+    } else {
+      setSection(key);
+    }
+  };
 
   const items: SidebarItem<EmployeeSection>[] = [
     { key: 'overview', label: 'Dashboard', icon: 'view-dashboard-outline' },
     { key: 'attendance', label: 'Attendance', icon: 'fingerprint' },
     { key: 'leave', label: 'Apply Leave', icon: 'calendar-clock-outline' },
+    { key: 'calendar', label: 'Calendar', icon: 'calendar-month-outline', flyout: true },
     ...(isManager ? [{ key: 'approvals' as const, label: 'Approvals', icon: 'clipboard-check-outline' as const }] : []),
     ...(isManager ? [{ key: 'team' as const, label: 'My Team', icon: 'account-group-outline' as const }] : []),
     { key: 'history', label: 'History', icon: 'history' },
+    { key: 'payslips', label: 'Payslips', icon: 'file-pdf-box' },
     { key: 'profile', label: 'Profile', icon: 'account-circle-outline' },
   ];
 
@@ -66,7 +92,13 @@ export function EmployeeWebDashboard() {
 
   return (
     <View style={styles.root}>
-      <AdminSidebar active={section} onChange={setSection} items={items} brandLabel="WorkTrack" brandIcon="calendar-check" />
+      <DashboardBackdrop />
+      <AdminSidebar
+        active={calendarOpen ? 'calendar' : section}
+        onChange={handleSectionChange}
+        items={items}
+        brandLabel="WorkTrack"
+      />
 
       <View style={styles.contentArea}>
         <View style={styles.topBar}>
@@ -97,9 +129,12 @@ export function EmployeeWebDashboard() {
           {section === 'approvals' && <ApprovalsSection />}
           {section === 'team' && <MyTeamSection />}
           {section === 'history' && <HistorySection />}
+          {section === 'payslips' && <PayslipsSection />}
           {section === 'profile' && <ProfileSection />}
         </View>
       </View>
+
+      <CalendarDrawer open={calendarOpen} onClose={() => setCalendarOpen(false)} />
 
       <AdminConfirmModal
         visible={logoutModalVisible}
@@ -317,7 +352,8 @@ function AttendanceActionCard() {
   const record = todayQuery.data;
   const hasCheckedIn = !!record?.checkInTime;
   const hasCheckedOut = !!record?.checkOutTime;
-  const { data: checkInAddress, isPending: addressPending } = useReverseGeocode(record?.checkInLocation);
+  const { data: checkInAddress, isPending: checkInAddressPending } = useReverseGeocode(record?.checkInLocation);
+  const { data: checkOutAddress, isPending: checkOutAddressPending } = useReverseGeocode(record?.checkOutLocation);
 
   const reportError = (error: any) => {
     if (error instanceof LocationPermissionDeniedError) {
@@ -360,6 +396,23 @@ function AttendanceActionCard() {
         <AttendanceStatusBadge record={record} />
       </View>
 
+      <View style={styles.heroWrapper}>
+        {hasCheckedIn ? (
+          <TimeBadge
+            theme={theme}
+            mainText={(
+              ((hasCheckedOut ? parseISO(record!.checkOutTime as string) : new Date()).getTime() -
+                parseISO(record!.checkInTime as string).getTime()) /
+              3600000
+            ).toFixed(2)}
+            unit="HRS"
+            tone="success"
+          />
+        ) : (
+          <TimeBadge theme={theme} mainText={format(new Date(), 'h:mm')} unit={format(new Date(), 'a')} />
+        )}
+      </View>
+
       <View style={styles.timesRow}>
         <View style={styles.timeBlock}>
           <MaterialCommunityIcons name="login" size={18} color={theme.colors.success} />
@@ -380,10 +433,18 @@ function AttendanceActionCard() {
 
       {record?.checkInLocation && (
         <Text style={styles.locationText}>
-          <MaterialCommunityIcons name="map-marker-outline" size={14} color={theme.colors.textMuted} />{' '}
-          {addressPending
+          <MaterialCommunityIcons name="login" size={14} color={theme.colors.success} />{' '}
+          {checkInAddressPending
             ? 'Locating…'
             : checkInAddress ?? `${record.checkInLocation.latitude.toFixed(5)}, ${record.checkInLocation.longitude.toFixed(5)}`}
+        </Text>
+      )}
+      {record?.checkOutLocation && (
+        <Text style={styles.locationText}>
+          <MaterialCommunityIcons name="logout" size={14} color={theme.colors.danger} />{' '}
+          {checkOutAddressPending
+            ? 'Locating…'
+            : checkOutAddress ?? `${record.checkOutLocation.latitude.toFixed(5)}, ${record.checkOutLocation.longitude.toFixed(5)}`}
         </Text>
       )}
 
@@ -420,12 +481,12 @@ function OverviewSection({ onNavigate }: { onNavigate: (s: EmployeeSection) => v
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>Hi, {employee?.name?.split(' ')[0]}</Text>
-      <Text style={styles.subheading}>
-        {employee?.id} · {employee?.department} · {format(new Date(), 'EEEE, dd MMMM yyyy')}
-      </Text>
-
-      <View style={styles.spacer} />
+      <DashboardHero
+        theme={theme}
+        title={`Hi, ${employee?.name?.split(' ')[0] ?? 'there'}`}
+        subtitle={`${employee?.id ?? ''} · ${employee?.department ?? ''} · ${format(new Date(), 'EEEE, dd MMMM yyyy')}`}
+        videoSrc="/videos/hero-attendance.mp4"
+      />
 
       <KpiTileRow
         tiles={[
@@ -490,9 +551,13 @@ export function AttendanceSection() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>Attendance</Text>
-      <Text style={styles.subheading}>{format(new Date(), 'EEEE, dd MMMM yyyy')}</Text>
-      <View style={styles.spacer} />
+      <DashboardHero
+        theme={theme}
+        title="Attendance"
+        subtitle={format(new Date(), 'EEEE, dd MMMM yyyy')}
+        videoSrc="/videos/hero-attendance.mp4"
+        compact
+      />
       <View style={{ maxWidth: 480 }}>
         <AttendanceActionCard />
       </View>
@@ -561,10 +626,13 @@ export function LeaveSection() {
 
   return (
     <ScrollView contentContainerStyle={styles.content}>
-      <Text style={styles.heading}>Leave</Text>
-      <Text style={styles.subheading}>View your balance and apply for time off</Text>
-
-      <View style={styles.spacer} />
+      <DashboardHero
+        theme={theme}
+        title="Leave"
+        subtitle="View your balance and apply for time off"
+        videoSrc="/videos/hero-leave.mp4"
+        compact
+      />
 
       {balancesQuery.data && (
         <KpiTileRow
@@ -617,6 +685,7 @@ export function LeaveSection() {
                 )}
               />
             </View>
+                
             <View style={styles.dateField}>
               <Controller
                 control={control}
@@ -673,6 +742,16 @@ export function LeaveSection() {
               {balance && type !== 'Unpaid' && (
                 <Text style={[styles.durationText, remainingAfter !== null && remainingAfter < 0 && { color: theme.colors.danger }]}>
                   {remainingAfter} / {balance.total} days left after this request
+                </Text>
+              )}
+              {type === 'Unpaid' && (
+                <Text style={[styles.durationText, { color: theme.colors.danger }]}>
+                  All {days} day(s) are unpaid and will be deducted from your pay.
+                </Text>
+              )}
+              {type !== 'Unpaid' && remainingAfter !== null && remainingAfter < 0 && (
+                <Text style={[styles.durationText, { color: theme.colors.danger }]}>
+                  {Math.min(days, Math.abs(remainingAfter))} day(s) beyond your balance will be deducted from your pay.
                 </Text>
               )}
             </View>
@@ -798,6 +877,8 @@ function ProfileSection() {
   const styles = useMemo(() => createStyles(theme), [theme]);
   const employee = useAppSelector((s) => s.auth.employee);
   const updateProfileMutation = useUpdateProfile();
+  const managersQuery = useManagers();
+  const managerName = managersQuery.data?.find((m) => m.id === employee?.reportsToId)?.name;
   const [phone, setPhone] = useState(employee?.phone ?? '');
   const [sheetVisible, setSheetVisible] = useState(false);
   const [pendingAvatarUri, setPendingAvatarUri] = useState<string | null>(null);
@@ -876,6 +957,7 @@ function ProfileSection() {
             <Text style={styles.detailMeta}>
               {employee?.department} · {employee?.id}
             </Text>
+            {!!managerName && <Text style={styles.detailMeta}>Reports to {managerName}</Text>}
           </View>
         </View>
 
@@ -911,7 +993,7 @@ function ProfileSection() {
   );
 }
 
-function createStyles(theme: WebTheme) {
+function createStyles(theme: WebTheme, mode: WebThemeMode = 'dark') {
   return StyleSheet.create({
     root: {
       flex: 1,
@@ -928,9 +1010,11 @@ function createStyles(theme: WebTheme) {
       paddingHorizontal: theme.spacing.xl,
       paddingVertical: theme.spacing.md,
       borderBottomWidth: 1,
-      borderBottomColor: theme.colors.border,
-      backgroundColor: theme.colors.surface,
-    },
+      borderBottomColor: 'rgba(255,255,255,0.12)',
+      backgroundColor: mode === 'dark' ? 'rgba(24,29,48,0.5)' : 'rgba(255,255,255,0.5)',
+      backdropFilter: 'blur(20px)',
+      WebkitBackdropFilter: 'blur(20px)',
+    } as any,
     topBarRight: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -997,6 +1081,10 @@ function createStyles(theme: WebTheme) {
     attendanceHeaderRow: {
       flexDirection: 'row',
       justifyContent: 'space-between',
+      alignItems: 'center',
+      marginBottom: theme.spacing.md,
+    },
+    heroWrapper: {
       alignItems: 'center',
       marginBottom: theme.spacing.md,
     },
