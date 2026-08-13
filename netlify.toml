@@ -1,0 +1,14 @@
+[build]
+  command = "npm run build:web"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Single-page app: any deep link (e.g. a refreshed or shared URL) should still
+# resolve to index.html so the app's own in-memory navigation can take over,
+# rather than Netlify returning a 404 for paths that only exist client-side.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
